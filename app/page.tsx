@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import { SORTING, SEARCHING } from '@/lib/algorithms';
 import AlgoCard from '@/components/AlgoCard';
 import DataStructuresPlayground from '@/components/DataStructuresPlayground';
+import StringAlgorithms from '@/components/StringAlgorithms';
+import DPAndGreedyAlgorithms from '@/components/DPAndGreedyAlgorithms';
+import RecursionAlgorithms from '@/components/RecursionAlgorithms';
 
 const COMPLEXITY_LEVELS = [
   { name: 'all', label: '显示全部', speed: 'Reset', desc: '查看完整的经典算法与数据结构列表。', border: 'border-zinc-800 text-zinc-400 bg-zinc-900/10 hover:border-zinc-700 font-sans' },
@@ -46,6 +49,9 @@ export default function Page() {
           <a href="#data-structures" className="px-3.5 py-1.5 rounded-full text-[12.5px] text-[var(--text-sec)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-colors">数据结构 (4)</a>
           <a href="#sorting" className="px-3.5 py-1.5 rounded-full text-[12.5px] text-[var(--text-sec)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-colors">排序 ({SORTING.length})</a>
           <a href="#searching" className="px-3.5 py-1.5 rounded-full text-[12.5px] text-[var(--text-sec)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-colors">搜索 ({SEARCHING.length})</a>
+          <a href="#string-algos" className="px-3.5 py-1.5 rounded-full text-[12.5px] text-[var(--text-sec)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-colors">字符串匹配 ({3})</a>
+          <a href="#advanced-algos" className="px-3.5 py-1.5 rounded-full text-[12.5px] text-[var(--text-sec)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-colors">贪心与动态规划 ({20})</a>
+          <a href="#recursion-algos" className="px-3.5 py-1.5 rounded-full text-[12.5px] text-[var(--text-sec)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-colors">递归专题 (10)</a>
         </div>
       </nav>
 
@@ -63,6 +69,15 @@ export default function Page() {
           </span>
           <span className="px-4 py-1.5 border border-[var(--border)] rounded-full text-[12px] text-[var(--text-sec)] font-mono bg-[rgba(12,12,26,0.5)]">
             {SEARCHING.length} 种基础搜索算法
+          </span>
+          <span className="px-4 py-1.5 border border-[var(--border)] rounded-full text-[12px] text-[var(--text-sec)] font-mono bg-[rgba(12,12,26,0.5)]">
+            3 种经典字符串匹配算法
+          </span>
+          <span className="px-4 py-1.5 border border-[var(--border)] rounded-full text-[12px] text-[var(--text-sec)] font-mono bg-[rgba(12,12,26,0.5)]">
+            10 种贪心算法 + 10 种动态规划
+          </span>
+          <span className="px-4 py-1.5 border border-[var(--border)] rounded-full text-[12px] text-[var(--text-sec)] font-mono bg-[rgba(12,12,26,0.5)]">
+            10 例经典递归专题演练
           </span>
           <span className="px-4 py-1.5 border border-[var(--border)] rounded-full text-[12px] text-[var(--text-sec)] font-mono bg-[rgba(12,12,26,0.5)]">
             C 语言逐行代码级剖析
@@ -187,8 +202,35 @@ export default function Page() {
         </div>
       </section>
 
+      {/* Algorithm: String Matching */}
+      <section id="string-algos" className="max-w-[1200px] mx-auto px-5 pb-9">
+        <div className="flex items-center gap-3 mb-7 pb-3 border-b border-[var(--border)]">
+          <h2 className="font-extrabold text-[24px]">3. 字符串匹配算法演练</h2>
+          <span className="font-mono text-[11px] px-2.5 py-0.5 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] border border-[rgba(0,229,255,0.15)]">STRING MATCH · 3 种模式</span>
+        </div>
+        <StringAlgorithms />
+      </section>
+
+      {/* Algorithm: Advanced greedy & dp paradigms */}
+      <section id="advanced-algos" className="max-w-[1200px] mx-auto px-5 pb-9">
+        <div className="flex items-center gap-3 mb-7 pb-3 border-b border-[var(--border)]">
+          <h2 className="font-extrabold text-[24px]">4. 贪心与动态规划专题</h2>
+          <span className="font-mono text-[11px] px-2.5 py-0.5 rounded-full bg-[var(--purple-dim)] text-[var(--purple)] border border-[rgba(238,130,238,0.15)]">GREEDY &amp; DP · 20 种经典范式</span>
+        </div>
+        <DPAndGreedyAlgorithms />
+      </section>
+
+      {/* Algorithm: Recursion & Backtracking */}
+      <section id="recursion-algos" className="max-w-[1200px] mx-auto px-5 pb-9">
+        <div className="flex items-center gap-3 mb-7 pb-3 border-b border-[var(--border)]">
+          <h2 className="font-extrabold text-[24px]">5. 递归与回溯专题</h2>
+          <span className="font-mono text-[11px] px-2.5 py-0.5 rounded-full bg-[var(--purple-dim)] text-[var(--purple)] border border-[rgba(238,130,238,0.15)]">RECURSION &amp; BACKTRACKING · 10 种经典案例</span>
+        </div>
+        <RecursionAlgorithms />
+      </section>
+
       <footer className="text-center py-9 mt-9 px-5 border-t border-[var(--border)] text-[var(--text-muted)] text-[12px] font-mono">
-        ALGO-VIZ PRO &mdash; 排序与搜索算法全景教学 · {ALL.length} 个经典算法 · C 语言原生态指针与堆栈微步跟踪
+        ALGO-VIZ PRO &mdash; 排序与搜索算法全景教学 · {ALL.length + 30} 个经典算法实例 · C 语言原生态指针与堆栈微步跟踪
       </footer>
     </main>
   );
