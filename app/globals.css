@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+/* Base Concept Variables from Original App */
+:root {
+  --bg: #06060e;
+  --bg-card: #0c0c1a;
+  --bg-code: #080816;
+  --border: #1a1a3a;
+  --accent: #00e5ff;
+  --accent-dim: rgba(0, 229, 255, 0.08);
+  --accent-glow: rgba(0, 229, 255, 0.25);
+  --orange: #ff7043;
+  --green: #66bb6a;
+  --yellow: #ffca28;
+  --red: #ef5350;
+  --purple: #ab47bc;
+  --amber: #ffa726;
+  --text: #e4e2de;
+  --text-sec: #8a8898;
+  --text-muted: #4a4860;
+  --r: 10px;
+  --rs: 6px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+body::before {
+  content: ''; 
+  position: fixed; 
+  inset: 0;
+  background: radial-gradient(ellipse at 15% 20%, rgba(0,229,255,.03) 0%, transparent 50%),
+              radial-gradient(ellipse at 85% 80%, rgba(171,71,188,.03) 0%, transparent 50%);
+  pointer-events: none; 
+  z-index: -1;
+}
+
+/* Visualization Container Animations & Overrides */
+.viz-bar {
+  transition: height .2s ease, background-color .12s, border-color .12s, box-shadow .12s;
+}
+.viz-bar.comparing {
+  background: rgba(255, 202, 40, .32);
+  border-color: var(--yellow);
+  box-shadow: 0 0 10px rgba(255, 202, 40, .2);
+}
+.viz-bar.swapping {
+  background: rgba(239, 83, 80, .32);
+  border-color: var(--red);
+  box-shadow: 0 0 10px rgba(239, 83, 80, .2);
+}
+.viz-bar.sorted {
+  background: rgba(102, 187, 106, .32);
+  border-color: var(--green);
+  box-shadow: 0 0 10px rgba(102, 187, 106, .15);
+}
+.viz-bar.pivot {
+  background: rgba(0, 229, 255, .28);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(0, 229, 255, .2);
+}
+.viz-bar.active {
+  background: rgba(0, 229, 255, .16);
+  border-color: rgba(0, 229, 255, .28);
+}
+.viz-bar.found {
+  background: rgba(102, 187, 106, .48);
+  border-color: var(--green);
+  box-shadow: 0 0 14px rgba(102, 187, 106, .35);
+}
+.viz-bar.eliminated {
+  background: rgba(50, 50, 70, .25);
+  border-color: rgba(50, 50, 70, .25);
+  opacity: .3;
+}
+.viz-bar.pointer-l {
+  box-shadow: inset 3px 0 0 var(--orange);
+}
+.viz-bar.pointer-r {
+  box-shadow: inset -3px 0 0 var(--purple);
+}
+.viz-bar.pointer-m {
+  box-shadow: inset 0 -3px 0 var(--accent);
+}
+.viz-bar.estimated {
+  background: rgba(255, 167, 38, .28);
+  border-color: var(--amber);
+  box-shadow: 0 0 10px rgba(255, 167, 38, .2);
+}
+
+/* Syntax Highlighting Base */
+.kw { color: #c792ea; }
+.fn { color: #82aaff; }
+.num { color: #f78c6c; }
+.cmt { color: #546e7a; font-style: italic; }
+.str { color: #c3e88d; }
+.op { color: #89ddff; }
