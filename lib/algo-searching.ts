@@ -9,15 +9,15 @@ export const SEARCHING_REST: AlgorithmDef[] = [
     explains: ['入', '参', '找', '探', '中', '退', '闭', '未'],
     genSteps: (arr, target = 0) => {
       const s: AlgorithmState[] = [], a = [...arr], n = a.length;
-      s.push({ a: [...a], cmp: [], found: -1, elim: [], ptr: -1, line: 0, msg: \`搜 \${target}\` });
+      s.push({ a: [...a], cmp: [], found: -1, elim: [], ptr: -1, line: 0, msg: `搜 \${target}` });
       for (let i = 0; i < n; i++) {
-        s.push({ a: [...a], cmp: [i], found: -1, elim: [], ptr: i, line: 3, msg: \`探 \${a[i]}\` });
+        s.push({ a: [...a], cmp: [i], found: -1, elim: [], ptr: i, line: 3, msg: `探 \${a[i]}` });
         if (a[i] === target) {
-          s.push({ a: [...a], cmp: [], found: i, elim: [], ptr: i, line: 4, msg: \`中!\` });
+          s.push({ a: [...a], cmp: [], found: i, elim: [], ptr: i, line: 4, msg: `中!` });
           return s;
         }
       }
-      s.push({ a: [...a], cmp: [], found: -1, elim: Array.from({ length: n }, (_, i) => i), ptr: -1, line: 7, msg: \`脱靶\` });
+      s.push({ a: [...a], cmp: [], found: -1, elim: Array.from({ length: n }, (_, i) => i), ptr: -1, line: 7, msg: `脱靶` });
       return s;
     }
   },
@@ -30,24 +30,24 @@ export const SEARCHING_REST: AlgorithmDef[] = [
     genSteps: (arr, target = 0) => {
       const s: AlgorithmState[] = [], a = [...arr], n = a.length;
       let l = 0, r = n - 1;
-      s.push({ a: [...a], cmp: [], found: -1, elim: [], ptrs: { l: 0, r: n - 1 }, line: 0, msg: \`搜 \${target}\` });
+      s.push({ a: [...a], cmp: [], found: -1, elim: [], ptrs: { l: 0, r: n - 1 }, line: 0, msg: `搜 \${target}` });
       while (l <= r) {
         const mid = Math.floor(l + (r - l) / 2);
-        s.push({ a: [...a], cmp: [mid], found: -1, elim: [], ptrs: { l, r, mid }, line: 3, msg: \`切L\${l}R\${r}看\${mid}\` });
+        s.push({ a: [...a], cmp: [mid], found: -1, elim: [], ptrs: { l, r, mid }, line: 3, msg: `切L\${l}R\${r}看\${mid}` });
         if (a[mid] === target) {
-          s.push({ a: [...a], cmp: [], found: mid, elim: [], ptrs: { l, r, mid }, line: 5, msg: \`中!\` });
+          s.push({ a: [...a], cmp: [], found: mid, elim: [], ptrs: { l, r, mid }, line: 5, msg: `中!` });
           return s;
         } else if (a[mid] < target) {
           const e: number[] = []; for (let k = l; k <= mid; k++) e.push(k);
-          s.push({ a: [...a], cmp: [], found: -1, elim: e, ptrs: { l: mid + 1, r, mid }, line: 7, msg: \`往后找\` });
+          s.push({ a: [...a], cmp: [], found: -1, elim: e, ptrs: { l: mid + 1, r, mid }, line: 7, msg: `往后找` });
           l = mid + 1;
         } else {
           const e: number[] = []; for (let k = mid; k <= r; k++) e.push(k);
-          s.push({ a: [...a], cmp: [], found: -1, elim: e, ptrs: { l, r: mid - 1, mid }, line: 9, msg: \`往前找\` });
+          s.push({ a: [...a], cmp: [], found: -1, elim: e, ptrs: { l, r: mid - 1, mid }, line: 9, msg: `往前找` });
           r = mid - 1;
         }
       }
-      s.push({ a: [...a], cmp: [], found: -1, elim: Array.from({ length: n }, (_, i) => i), ptrs: {}, line: 11, msg: \`无\` });
+      s.push({ a: [...a], cmp: [], found: -1, elim: Array.from({ length: n }, (_, i) => i), ptrs: {}, line: 11, msg: `无` });
       return s;
     }
   },
@@ -61,25 +61,25 @@ export const SEARCHING_REST: AlgorithmDef[] = [
       const s: AlgorithmState[] = [], a = [...arr], n = a.length;
       const step = Math.max(1, Math.floor(Math.sqrt(n)));
       let prev = 0, curr = step;
-      s.push({ a: [...a], cmp: [], found: -1, elim: [], est: -1, ptr: 0, line: 1, msg: \`跳\` });
+      s.push({ a: [...a], cmp: [], found: -1, elim: [], est: -1, ptr: 0, line: 1, msg: `跳` });
       while (curr < n && a[curr - 1] < target) {
-        s.push({ a: [...a], cmp: [curr - 1], found: -1, elim: [], est: curr, line: 3, msg: \`接力\` });
+        s.push({ a: [...a], cmp: [curr - 1], found: -1, elim: [], est: curr, line: 3, msg: `接力` });
         prev = curr; curr += step;
         if (prev >= n) {
-          s.push({ a: [...a], cmp: [], found: -1, elim: Array.from({ length: n }, (_, i) => i), est: -1, ptr: -1, line: 8, msg: \`跃出\` });
+          s.push({ a: [...a], cmp: [], found: -1, elim: Array.from({ length: n }, (_, i) => i), est: -1, ptr: -1, line: 8, msg: `跃出` });
           return s;
         }
       }
       const be = Math.min(curr, n);
-      s.push({ a: [...a], cmp: [], found: -1, elim: [], est: -1, ptr: prev, line: 6, msg: \`线查\` });
+      s.push({ a: [...a], cmp: [], found: -1, elim: [], est: -1, ptr: prev, line: 6, msg: `线查` });
       for (let i = prev; i < be; i++) {
-        s.push({ a: [...a], cmp: [i], found: -1, elim: [], est: -1, ptr: i, line: 6, msg: \`碰\` });
+        s.push({ a: [...a], cmp: [i], found: -1, elim: [], est: -1, ptr: i, line: 6, msg: `碰` });
         if (a[i] === target) {
-          s.push({ a: [...a], cmp: [], found: i, elim: [], est: -1, ptr: i, line: 7, msg: \`中!\` });
+          s.push({ a: [...a], cmp: [], found: i, elim: [], est: -1, ptr: i, line: 7, msg: `中!` });
           return s;
         }
       }
-      s.push({ a: [...a], cmp: [], found: -1, elim: Array.from({ length: n }, (_, i) => i), est: -1, ptr: -1, line: 9, msg: \`无\` });
+      s.push({ a: [...a], cmp: [], found: -1, elim: Array.from({ length: n }, (_, i) => i), est: -1, ptr: -1, line: 9, msg: `无` });
       return s;
     }
   },
@@ -92,32 +92,32 @@ export const SEARCHING_REST: AlgorithmDef[] = [
     genSteps: (arr, target = 0) => {
       const s: AlgorithmState[] = [], a = [...arr], n = a.length;
       let lo = 0, hi = n - 1;
-      s.push({ a: [...a], cmp: [], found: -1, elim: [], ptrs: { l: 0, r: n - 1 }, est: -1, line: 0, msg: \`插\` });
+      s.push({ a: [...a], cmp: [], found: -1, elim: [], ptrs: { l: 0, r: n - 1 }, est: -1, line: 0, msg: `插` });
       while (lo <= hi && target >= a[lo] && target <= a[hi]) {
         if (lo === hi) {
           if (a[lo] === target) {
-            s.push({ a: [...a], cmp: [], found: lo, elim: [], ptrs: { l: lo, r: hi }, est: lo, line: 4, msg: \`中!\` });
+            s.push({ a: [...a], cmp: [], found: lo, elim: [], ptrs: { l: lo, r: hi }, est: lo, line: 4, msg: `中!` });
             return s;
           }
           break;
         }
-        const pos = lo + Math.floor((hi - lo) * (target - a[lo]) / (a[hi] - a[lo]));
-        s.push({ a: [...a], cmp: [pos], found: -1, elim: [], ptrs: { l: lo, r: hi }, est: pos, line: 7, msg: \`估算pos=\${pos}\` });
+        const pos: number = lo + Math.floor((hi - lo) * (target - a[lo]) / (a[hi] - a[lo]));
+        s.push({ a: [...a], cmp: [pos], found: -1, elim: [], ptrs: { l: lo, r: hi }, est: pos, line: 7, msg: `估算pos=\${pos}` });
         if (a[pos] === target) {
-          s.push({ a: [...a], cmp: [], found: pos, elim: [], ptrs: { l: lo, r: hi }, est: pos, line: 8, msg: \`中!\` });
+          s.push({ a: [...a], cmp: [], found: pos, elim: [], ptrs: { l: lo, r: hi }, est: pos, line: 8, msg: `中!` });
           return s;
         }
         if (a[pos] < target) {
           const e: number[] = []; for (let k = lo; k <= pos; k++) e.push(k);
-          s.push({ a: [...a], cmp: [], found: -1, elim: e, ptrs: { l: pos + 1, r: hi }, est: -1, line: 9, msg: \`砍后背\` });
+          s.push({ a: [...a], cmp: [], found: -1, elim: e, ptrs: { l: pos + 1, r: hi }, est: -1, line: 9, msg: `砍后背` });
           lo = pos + 1;
         } else {
           const e: number[] = []; for (let k = pos; k <= hi; k++) e.push(k);
-          s.push({ a: [...a], cmp: [], found: -1, elim: e, ptrs: { l: lo, r: pos - 1 }, est: -1, line: 10, msg: \`砍前胸\` });
+          s.push({ a: [...a], cmp: [], found: -1, elim: e, ptrs: { l: lo, r: pos - 1 }, est: -1, line: 10, msg: `砍前胸` });
           hi = pos - 1;
         }
       }
-      s.push({ a: [...a], cmp: [], found: -1, elim: Array.from({ length: n }, (_, i) => i), ptrs: {}, est: -1, line: 12, msg: \`空\` });
+      s.push({ a: [...a], cmp: [], found: -1, elim: Array.from({ length: n }, (_, i) => i), ptrs: {}, est: -1, line: 12, msg: `空` });
       return s;
     }
   }

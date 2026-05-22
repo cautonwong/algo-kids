@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { SORTING, SEARCHING } from '@/lib/algorithms';
 import AlgoCard from '@/components/AlgoCard';
@@ -62,7 +64,7 @@ export default function Page() {
                 return (
                   <tr key={algo.id} className="hover:bg-[var(--accent-dim)] transition-colors group">
                     <td className="py-2.5 px-3 border-b border-[rgba(26,26,58,0.4)] text-[var(--text-sec)]">
-                      <a href={\`#algo-\${algo.id}\`} className="text-[var(--accent)] font-medium hover:underline">{algo.name}</a>
+                      <a href={`#algo-${algo.id}`} className="text-[var(--accent)] font-medium hover:underline">{algo.name}</a>
                     </td>
                     <td className="py-2.5 px-3 border-b border-[rgba(26,26,58,0.4)] text-[var(--text-sec)]">{isSearch ? '搜索' : '排序'}</td>
                     <td className="py-2.5 px-3 border-b border-[rgba(26,26,58,0.4)] text-[var(--text-sec)]" dangerouslySetInnerHTML={{ __html: algo.best }} />

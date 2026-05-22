@@ -161,7 +161,7 @@ export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef
             <button className="w-8 h-8 flex items-center justify-center border border-[var(--border)] rounded-[var(--rs)] bg-[var(--bg-card)] text-[var(--text-sec)] text-[13px] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-all" onClick={() => { setPlaying(false); setCurIdx(c => Math.max(c - 1, 0)); }} title="后退">
               ◀
             </button>
-            <button className={\`w-10 h-8 flex items-center justify-center border rounded-[var(--rs)] bg-[var(--bg-card)] text-[15px] transition-all \${playing ? 'text-[var(--yellow)] border-[rgba(255,202,40,0.3)]' : 'text-[var(--text-sec)] border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]'}\`} onClick={() => setPlaying(!playing)} title="播放/暂停">
+            <button className={`w-10 h-8 flex items-center justify-center border rounded-[var(--rs)] bg-[var(--bg-card)] text-[15px] transition-all ${playing ? 'text-[var(--yellow)] border-[rgba(255,202,40,0.3)]' : 'text-[var(--text-sec)] border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]'}`} onClick={() => setPlaying(!playing)} title="播放/暂停">
               {playing ? '⏸' : '▶'}
             </button>
             <button className="w-8 h-8 flex items-center justify-center border border-[var(--border)] rounded-[var(--rs)] bg-[var(--bg-card)] text-[var(--text-sec)] text-[13px] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-all" onClick={() => { setPlaying(false); setCurIdx(c => Math.min(c + 1, steps.length - 1)); }} title="前进">
@@ -176,7 +176,7 @@ export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef
 
             <div className="flex gap-[3px] ml-1.5">
               {[8, 10, 15, 20].map(s => (
-                <button key={s} onClick={() => handleSizeClick(s)} className={\`px-2 py-0.5 font-mono text-[10.5px] border rounded-full transition-all \${size === s ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-dim)]' : 'border-[var(--border)] text-[var(--text-sec)] bg-transparent hover:border-[var(--accent)] hover:text-[var(--accent)]'}\`}>
+                <button key={s} onClick={() => handleSizeClick(s)} className={`px-2 py-0.5 font-mono text-[10.5px] border rounded-full transition-all ${size === s ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-dim)]' : 'border-[var(--border)] text-[var(--text-sec)] bg-transparent hover:border-[var(--accent)] hover:text-[var(--accent)]'}`}>
                   {s}
                 </button>
               ))}
@@ -200,7 +200,7 @@ export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef
         <div className="flex flex-col max-h-[400px] lg:max-h-[500px]" ref={containerRef}>
           <div className="flex-1 overflow-y-auto py-3 bg-[var(--bg-code)] font-mono text-[12px] leading-[1.8] scrollbar-thin scrollbar-thumb-[var(--border)]">
             {algo.code.split('\\n').map((line, i) => (
-              <div key={i} className={\`code-line flex py-[1px] pr-[14px] cursor-pointer transition-colors border-l-[3px] \${st.line === i ? 'active' : 'border-transparent hover:bg-white/5'}\`} onClick={() => { setPlaying(false); /* The prompt had an interactive code text explain here, optionally we could jump to the step but it's okay to just show the tool tip. */ }}>
+              <div key={i} className={`code-line flex py-[1px] pr-[14px] cursor-pointer transition-colors border-l-[3px] ${st.line === i ? 'active' : 'border-transparent hover:bg-white/5'}`} onClick={() => { setPlaying(false); /* The prompt had an interactive code text explain here, optionally we could jump to the step but it's okay to just show the tool tip. */ }}>
                 <span className="w-8 text-right pr-2.5 text-[var(--text-muted)] select-none shrink-0 text-[10.5px]">{(i + 1)}</span>
                 <span className="flex-1 whitespace-pre text-[var(--text-sec)]" dangerouslySetInnerHTML={{ __html: highlightCode(line) }} />
               </div>
