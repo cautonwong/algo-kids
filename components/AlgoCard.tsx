@@ -220,7 +220,7 @@ export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef
         {/* Code Panel */}
         <div className="flex flex-col max-h-[400px] lg:max-h-[500px]" ref={containerRef}>
           <div className="flex-1 overflow-y-auto py-3 bg-[var(--bg-code)] font-mono text-[12px] leading-[1.8] scrollbar-thin scrollbar-thumb-[var(--border)]">
-            {algo.code.split('\\n').map((line, i) => (
+            {algo.code.split(/\r?\n|\\n/).map((line, i) => (
               <div key={i} data-line={i} className={`code-line flex py-[1px] pr-[14px] cursor-pointer transition-all border-l-[3px] ${st.line === i ? 'active' : 'border-transparent hover:bg-white/5'}`} onClick={() => { setPlaying(false); }}>
                 <span className="line-num w-8 text-right pr-2.5 text-[var(--text-muted)] select-none shrink-0 text-[10.5px] font-mono transition-all">
                   {st.line === i ? '▶' : (i + 1)}
