@@ -4,7 +4,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { AlgorithmDef, AlgorithmState } from '@/lib/algo-types';
 import { highlightCode } from '@/lib/syntax';
 
-function genArr(size: number) {
+function genArr(size: number, deterministic = false) {
+  if (deterministic) {
+    const base = [65, 23, 78, 41, 12, 89, 54, 32, 9, 71, 46, 83, 58, 27, 95, 14, 61, 38, 77, 50];
+    return base.slice(0, size);
+  }
   const mx = 90;
   const a: number[] = [];
   const u = new Set();
@@ -18,13 +22,29 @@ function genArr(size: number) {
   return a;
 }
 
+function generateNewState(size: number, isSearch: boolean, algo: AlgorithmDef, deterministic = false) {
+  const newArr = genArr(size, deterministic);
+  if (isSearch) newArr.sort((a, b) => a - b);
+  let t = null;
+  if (isSearch) {
+    t = deterministic ? newArr[Math.floor(newArr.length / 2)] : newArr[Math.floor(Math.random() * newArr.length)];
+  }
+  const s = isSearch ? algo.genSteps([...newArr], t ?? 0) : algo.genSteps([...newArr]);
+  return {
+    arr: newArr,
+    target: t,
+    steps: s,
+  };
+}
+
 export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef, isSearch: boolean, index: number }) {
-  const [arr, setArr] = useState<number[]>([]);
-  const [target, setTarget] = useState<number | null>(null);
   const [size, setSize] = useState(10);
   const [sliderVal, setSliderVal] = useState(350);
   
-  const [steps, setSteps] = useState<AlgorithmState[]>([]);
+  const [state, setState] = useState(() => {
+    return generateNewState(10, isSearch, algo, true);
+  });
+
   const [curIdx, setCurIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
 
@@ -32,43 +52,37 @@ export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef
   const speedMs = 880 - sliderVal;
 
   const initData = useCallback(() => {
-    const newArr = genArr(size);
-    if (isSearch) newArr.sort((a, b) => a - b);
-    setArr(newArr);
-    
-    let t = null;
-    if (isSearch) {
-      t = newArr[Math.floor(Math.random() * newArr.length)];
-      setTarget(t);
-    }
-
-    const s = isSearch ? algo.genSteps([...newArr], t || 0) : algo.genSteps([...newArr]);
-    setSteps(s);
+    setState(generateNewState(size, isSearch, algo));
     setCurIdx(0);
     setPlaying(false);
   }, [algo, isSearch, size]);
 
   useEffect(() => {
+    // Generate fresh random data on mount to provide high quality interactive arrays
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     initData();
-  }, [initData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!playing) return;
-    if (curIdx >= steps.length - 1) {
-      setPlaying(false);
-      return;
+    if (curIdx >= state.steps.length - 1) {
+      const t = setTimeout(() => {
+        setPlaying(false);
+      }, 0);
+      return () => clearTimeout(t);
     }
     const tId = setTimeout(() => {
       setCurIdx(c => c + 1);
     }, speedMs);
     return () => clearTimeout(tId);
-  }, [playing, curIdx, steps.length, speedMs]);
+  }, [playing, curIdx, state.steps.length, speedMs]);
 
-  const st = steps[curIdx] || { a: [], msg: '...' };
+  const st = state.steps[curIdx] || { a: [], msg: '...' };
 
   useEffect(() => {
     if (st.line >= 0) {
-      const el = containerRef.current?.querySelector('.code-line.active');
+      const el = containerRef.current?.querySelector(`[data-line="${st.line}"]`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
@@ -79,14 +93,21 @@ export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef
     const v = parseInt(e.target.value);
     if (!isNaN(v)) {
       setPlaying(false);
-      setTarget(v);
-      setSteps(algo.genSteps([...arr], v));
+      const s = algo.genSteps([...state.arr], v);
+      setState({
+        arr: state.arr,
+        target: v,
+        steps: s,
+      });
       setCurIdx(0);
     }
   };
 
   const handleSizeClick = (ns: number) => {
     setSize(ns);
+    setState(generateNewState(ns, isSearch, algo));
+    setCurIdx(0);
+    setPlaying(false);
   };
 
   return (
@@ -164,7 +185,7 @@ export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef
             <button className={`w-10 h-8 flex items-center justify-center border rounded-[var(--rs)] bg-[var(--bg-card)] text-[15px] transition-all ${playing ? 'text-[var(--yellow)] border-[rgba(255,202,40,0.3)]' : 'text-[var(--text-sec)] border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]'}`} onClick={() => setPlaying(!playing)} title="播放/暂停">
               {playing ? '⏸' : '▶'}
             </button>
-            <button className="w-8 h-8 flex items-center justify-center border border-[var(--border)] rounded-[var(--rs)] bg-[var(--bg-card)] text-[var(--text-sec)] text-[13px] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-all" onClick={() => { setPlaying(false); setCurIdx(c => Math.min(c + 1, steps.length - 1)); }} title="前进">
+            <button className="w-8 h-8 flex items-center justify-center border border-[var(--border)] rounded-[var(--rs)] bg-[var(--bg-card)] text-[var(--text-sec)] text-[13px] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-all" onClick={() => { setPlaying(false); setCurIdx(c => Math.min(c + 1, state.steps.length - 1)); }} title="前进 font-mono text-[10.5px] text-[var(--text-muted)]">
               ▶
             </button>
 
@@ -185,14 +206,14 @@ export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef
             {isSearch && (
               <div className="flex items-center gap-1.5 font-mono text-[12px] text-[var(--text-sec)] ml-1.5">
                 <span>目标:</span>
-                <input type="number" value={target ?? ''} onChange={handleSetTarget} className="w-[54px] px-1.5 py-0.5 border border-[var(--border)] rounded-[var(--rs)] bg-black/30 text-[var(--text)] text-center focus:outline-none focus:border-[var(--accent)]" />
+                <input type="number" value={state.target ?? ''} onChange={handleSetTarget} className="w-[54px] px-1.5 py-0.5 border border-[var(--border)] rounded-[var(--rs)] bg-black/30 text-[var(--text)] text-center focus:outline-none focus:border-[var(--accent)]" />
               </div>
             )}
           </div>
 
           <div className="text-[12.5px] text-[var(--text-sec)] min-h-[36px] flex items-center gap-2 flex-wrap mt-1">
             <span className="flex-1 text-[13px]">{st.msg}</span>
-            <span className="font-mono text-[11px] text-[var(--text-muted)] whitespace-nowrap">步骤 {curIdx + 1}/{Math.max(1, steps.length)}</span>
+            <span className="font-mono text-[11px] text-[var(--text-muted)] whitespace-nowrap">步骤 {curIdx + 1}/{Math.max(1, state.steps.length)}</span>
           </div>
         </div>
 
@@ -200,15 +221,19 @@ export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef
         <div className="flex flex-col max-h-[400px] lg:max-h-[500px]" ref={containerRef}>
           <div className="flex-1 overflow-y-auto py-3 bg-[var(--bg-code)] font-mono text-[12px] leading-[1.8] scrollbar-thin scrollbar-thumb-[var(--border)]">
             {algo.code.split('\\n').map((line, i) => (
-              <div key={i} className={`code-line flex py-[1px] pr-[14px] cursor-pointer transition-colors border-l-[3px] ${st.line === i ? 'active' : 'border-transparent hover:bg-white/5'}`} onClick={() => { setPlaying(false); /* The prompt had an interactive code text explain here, optionally we could jump to the step but it's okay to just show the tool tip. */ }}>
-                <span className="w-8 text-right pr-2.5 text-[var(--text-muted)] select-none shrink-0 text-[10.5px]">{(i + 1)}</span>
+              <div key={i} data-line={i} className={`code-line flex py-[1px] pr-[14px] cursor-pointer transition-all border-l-[3px] ${st.line === i ? 'active' : 'border-transparent hover:bg-white/5'}`} onClick={() => { setPlaying(false); }}>
+                <span className="line-num w-8 text-right pr-2.5 text-[var(--text-muted)] select-none shrink-0 text-[10.5px] font-mono transition-all">
+                  {st.line === i ? '▶' : (i + 1)}
+                </span>
                 <span className="flex-1 whitespace-pre text-[var(--text-sec)]" dangerouslySetInnerHTML={{ __html: highlightCode(line) }} />
               </div>
             ))}
           </div>
           <div className="p-3 px-4 min-h-[48px] bg-[#0d0d22] border-t border-[var(--border)] text-[13px] text-[var(--text-sec)] leading-[1.65] flex items-start gap-2">
             <span className="inline-flex items-center justify-center w-[18px] min-w-[18px] h-[18px] rounded-full bg-[var(--accent-dim)] text-[var(--accent)] font-sans font-bold italic mt-[2px] text-[10px]">i</span>
-            <span className="explain-text">{algo.explains[st.line] || (st.line === -1 ? '算法执行完毕!' : '点击播放观看动画，直观理解执行过程')}</span>
+            <span key={st.line} className="explain-text animate-[fadeIn_0.25s_ease-out] flex-1">
+              {algo.explains[st.line] || (st.line === -1 ? '算法执行完毕!' : '点击播放观看动画，直观理解执行过程')}
+            </span>
           </div>
         </div>
       </div>

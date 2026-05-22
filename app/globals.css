@@ -98,3 +98,57 @@ body::before {
 .cmt { color: #546e7a; font-style: italic; }
 .str { color: #c3e88d; }
 .op { color: #89ddff; }
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dynamic C Code Animating & Interactive Lines Style */
+.code-line {
+  border-left-width: 3px !important;
+  border-left-color: transparent !important;
+  transition: background-color 0.15s ease, border-left-color 0.15s ease, transform 0.15s ease-out;
+  position: relative;
+}
+
+.code-line.active {
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.12) 0%, rgba(0, 229, 255, 0.02) 100%) !important;
+  border-left-color: var(--accent) !important;
+  transform: translateX(2px);
+  box-shadow: inset 1px 0 0 rgba(0, 229, 255, 0.2);
+}
+
+.code-line.active .whitespace-pre {
+  color: #ffffff !important;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.25);
+}
+
+.code-line.active .line-num {
+  color: var(--accent) !important;
+  font-weight: bold;
+  opacity: 1;
+  text-shadow: 0 0 6px rgba(0, 229, 255, 0.4);
+}
+
+.code-line:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
