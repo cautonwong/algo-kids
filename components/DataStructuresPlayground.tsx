@@ -13,7 +13,7 @@ interface InteractiveDSStep {
 }
 
 export default function DataStructuresPlayground() {
-  const [activeTab, setActiveTab] = useState<'stack' | 'queue' | 'linkedlist' | 'array' | 'bst' | 'heap' | 'hash' | 'graph' | 'skiplist' | 'bloomfilter'>('stack');
+  const [activeTab, setActiveTab] = useState<'stack' | 'queue' | 'linkedlist' | 'array' | 'bst' | 'heap' | 'hash' | 'graph' | 'skiplist' | 'bloomfilter' | 'set' | 'zset' | 'bitmap'>('stack');
   const [lang, setLang] = useState<'c' | 'python' | 'javascript'>('c');
 
   // --- Skip List State & Engine ---
@@ -39,6 +39,36 @@ export default function DataStructuresPlayground() {
   const [currentBloomStepIdx, setCurrentBloomStepIdx] = useState<number>(-1);
   const [bloomInputValue, setBloomInputValue] = useState<number>(18);
   const [hBloomIdxs, setHBloomIdxs] = useState<number[]>([]);
+
+  // --- Set State & Engine ---
+  const [setA, setSetA] = useState<number[]>([12, 45, 67, 88]);
+  const [setB, setSetB] = useState<number[]>([23, 45, 88, 99]);
+  const [setSteps, setSetSteps] = useState<InteractiveDSStep[]>([]);
+  const [setHistory, setSetHistory] = useState<{ setA: number[]; setB: number[]; stepIdx: number; hSetKeys?: string[] }[]>([]);
+  const [currentSetStepIdx, setCurrentSetStepIdx] = useState<number>(-1);
+  const [setInputValue, setSetInputValue] = useState<number>(55);
+  const [hSetKeys, setHSetKeys] = useState<string[]>([]);
+
+  // --- ZSet State & Engine ---
+  const [zsetData, setZsetData] = useState<{ member: string; score: number }[]>([
+    { member: 'Charlie', score: 68 },
+    { member: 'Bob', score: 85 },
+    { member: 'Alice', score: 92 },
+  ]);
+  const [zsetSteps, setZsetSteps] = useState<InteractiveDSStep[]>([]);
+  const [zsetHistory, setZsetHistory] = useState<{ zset: { member: string; score: number }[]; stepIdx: number; hMember?: string }[]>([]);
+  const [currentZsetStepIdx, setCurrentZsetStepIdx] = useState<number>(-1);
+  const [zsetMemberValue, setZsetMemberValue] = useState<string>('David');
+  const [zsetScoreValue, setZsetScoreValue] = useState<number>(80);
+  const [hZsetMember, setHZsetMember] = useState<string | undefined>(undefined);
+
+  // --- Bitmap State & Engine ---
+  const [bitmapBits, setBitmapBits] = useState<number[]>(new Array(16).fill(0));
+  const [bitmapSteps, setBitmapSteps] = useState<InteractiveDSStep[]>([]);
+  const [bitmapHistory, setBitmapHistory] = useState<{ bits: number[]; stepIdx: number; hBitmapIdx?: number }[]>([]);
+  const [currentBitmapStepIdx, setCurrentBitmapStepIdx] = useState<number>(-1);
+  const [bitmapOffsetValue, setBitmapOffsetValue] = useState<number>(5);
+  const [hBitmapIdx, setHBitmapIdx] = useState<number | undefined>(undefined);
 
   // --- Stack State & Engine ---
   const [stackData, setStackData] = useState({
@@ -1202,6 +1232,366 @@ export default function DataStructuresPlayground() {
     setHBloomIdxs([]);
   };
 
+  // -----------------------------------------------------------------
+  // 11. SET METHODS
+  // -----------------------------------------------------------------
+  const handleSetInsert = (setChar: 'A' | 'B') => {
+    const val = setInputValue;
+    if (val < 1 || val > 99) return;
+    const targetSet = setChar === 'A' ? setA : setB;
+    const steps: InteractiveDSStep[] = [];
+
+    steps.push({
+      line: 6,
+      explanation: `[1] 开始插入 ${setChar} 集合。检查当前集合中是否已存在元素 ${val}。`
+    });
+
+    if (targetSet.includes(val)) {
+      steps.push({
+        line: 9,
+        explanation: `[唯一值校验] 集合不能包含重复值！由于 ${val} 已存在于 Set ${setChar}，本次插入被安全忽略。`,
+      });
+    } else {
+      steps.push({
+        line: 11,
+        explanation: `[插入完成] 确认 ${val} 具备唯一性，顺利追加至 Set ${setChar}。`,
+      });
+    }
+
+    setSetSteps(steps);
+    setCurrentSetStepIdx(0);
+    setHSetKeys([]);
+  };
+
+  const handleSetDelete = (val: number, setChar: 'A' | 'B') => {
+    const steps: InteractiveDSStep[] = [];
+    steps.push({
+      line: 15,
+      explanation: `[1] 准备从 Set ${setChar} 移除元素 ${val}。`
+    });
+    steps.push({
+      line: 18,
+      explanation: `[移除完成] 成功从 Set ${setChar} 移除了元素 ${val}。`,
+    });
+
+    setSetSteps(steps);
+    setCurrentSetStepIdx(0);
+    setHSetKeys([]);
+  };
+
+  const handleSetUnion = () => {
+    const steps: InteractiveDSStep[] = [];
+    const unionSet = Array.from(new Set([...setA, ...setB])).sort((a, b) => a - b);
+    steps.push({
+      line: 21,
+      explanation: `[开始并集] A ∪ B：收集 Set A 和 Set B 的所有元素，完成去重。`
+    });
+    steps.push({
+      line: 23,
+      explanation: `[合并去重] 并集运算结果：{${unionSet.join(', ')}}。`,
+    });
+    setSetSteps(steps);
+    setCurrentSetStepIdx(0);
+    setHSetKeys(unionSet.map(v => `union-${v}`));
+  };
+
+  const handleSetIntersect = () => {
+    const steps: InteractiveDSStep[] = [];
+    const interSet = setA.filter(v => setB.includes(v)).sort((a, b) => a - b);
+    steps.push({
+      line: 26,
+      explanation: `[开始交集] A ∩ B：寻找同时存在于 Set A 和 Set B 中的所有公共交叠元素。`
+    });
+    steps.push({
+      line: 28,
+      explanation: `[检索交叠] 交集运算结果：{${interSet.join(', ')}}。`,
+    });
+    setSetSteps(steps);
+    setCurrentSetStepIdx(0);
+    setHSetKeys(interSet.map(v => `inter-${v}`));
+  };
+
+  const handleSetDifference = () => {
+    const steps: InteractiveDSStep[] = [];
+    const diffSet = setA.filter(v => !setB.includes(v)).sort((a, b) => a - b);
+    steps.push({
+      line: 31,
+      explanation: `[开始差集] A - B：提取在 Set A 中存在、但绝不在 Set B 中存在的所有独立元素。`
+    });
+    steps.push({
+      line: 33,
+      explanation: `[排异结果] 相对差集(A - B)结果：{${diffSet.join(', ')}}。`,
+    });
+    setSetSteps(steps);
+    setCurrentSetStepIdx(0);
+    setHSetKeys(diffSet.map(v => `diff-${v}`));
+  };
+
+  const nextSetStep = () => {
+    if (currentSetStepIdx < 0 || currentSetStepIdx >= setSteps.length) return;
+    const nextIdx = currentSetStepIdx + 1;
+    if (nextIdx >= setSteps.length) {
+      setCurrentSetStepIdx(-1);
+      setSetSteps([]);
+      setHSetKeys([]);
+      return;
+    }
+
+    setSetHistory(prev => [...prev, { setA: [...setA], setB: [...setB], stepIdx: currentSetStepIdx, hSetKeys: hSetKeys }]);
+    const activeStep = setSteps[nextIdx];
+    
+    if (activeStep.explanation.includes('顺利追加至 Set')) {
+      const val = setInputValue;
+      const setChar = activeStep.explanation.includes('Set A') ? 'A' : 'B';
+      if (setChar === 'A') {
+        setSetA(prev => [...prev, val]);
+      } else {
+        setSetB(prev => [...prev, val]);
+      }
+    } else if (activeStep.explanation.includes('成功从 Set')) {
+      const matches = activeStep.explanation.match(/Set (A|B) 移除了元素 (\d+)/);
+      if (matches) {
+        const setChar = matches[1];
+        const val = parseInt(matches[2]);
+        if (setChar === 'A') {
+          setSetA(prev => prev.filter(v => v !== val));
+        } else {
+          setSetB(prev => prev.filter(v => v !== val));
+        }
+      }
+    }
+
+    setCurrentSetStepIdx(nextIdx);
+    autoScrollCode(activeStep.line);
+  };
+
+  const prevSetStep = () => {
+    if (setHistory.length === 0) return;
+    const prev = setHistory[setHistory.length - 1];
+    setSetA(prev.setA);
+    setSetB(prev.setB);
+    setCurrentSetStepIdx(prev.stepIdx);
+    setHSetKeys(prev.hSetKeys || []);
+    setSetHistory(history => history.slice(0, history.length - 1));
+    autoScrollCode(setSteps[prev.stepIdx].line);
+  };
+
+  const resetSetState = () => {
+    setSetA([12, 45, 67, 88]);
+    setSetB([23, 45, 88, 99]);
+    setSetSteps([]);
+    setSetHistory([]);
+    setCurrentSetStepIdx(-1);
+    setHSetKeys([]);
+  };
+
+  // -----------------------------------------------------------------
+  // 12. ZSET METHODS
+  // -----------------------------------------------------------------
+  const handleZSetInsert = () => {
+    const mem = zsetMemberValue.trim();
+    const score = zsetScoreValue;
+    if (!mem) return;
+    const steps: InteractiveDSStep[] = [];
+
+    steps.push({
+      line: 6,
+      explanation: `[1] 开始插入/更新有序集合。成员 ${mem}，附加分数为 ${score}。`
+    });
+
+    const exists = zsetData.some(x => x.member.toLowerCase() === mem.toLowerCase());
+    if (exists) {
+      steps.push({
+        line: 9,
+        explanation: `[更新评分] 发现已存在成员 ${mem}。正将其分数覆写为 ${score}。`,
+      });
+    } else {
+      steps.push({
+        line: 12,
+        explanation: `[增加新元素] 成员 ${mem} 属于新成员，分配初始分数 ${score}。`,
+      });
+    }
+
+    steps.push({
+      line: 15,
+      explanation: `[重调排序] ZSet 按 Score 从高到低进行权重排序以构建排行榜。`,
+    });
+
+    setZsetSteps(steps);
+    setCurrentZsetStepIdx(0);
+    setHZsetMember(undefined);
+  };
+
+  const handleZSetIncr = (member: string, amount: number) => {
+    const steps: InteractiveDSStep[] = [];
+    const currentScore = zsetData.find(x => x.member === member)?.score || 0;
+    const nextScore = currentScore + amount;
+
+    steps.push({
+      line: 18,
+      explanation: `[数值递增/减] 为成员 ${member} 加分：${amount}。旧分数：${currentScore}。`
+    });
+    steps.push({
+      line: 19,
+      explanation: `[分数更新] 成员 ${member} 的分数更新为：${nextScore}。`,
+    });
+    steps.push({
+      line: 15,
+      explanation: `[重调排序] ZSet 根据新的分数更新自动微调排行榜的排序位置。`,
+    });
+
+    setZsetMemberValue(member);
+    setZsetScoreValue(nextScore);
+    setZsetSteps(steps);
+    setCurrentZsetStepIdx(0);
+    setHZsetMember(undefined);
+  };
+
+  const nextZsetStep = () => {
+    if (currentZsetStepIdx < 0 || currentZsetStepIdx >= zsetSteps.length) return;
+    const nextIdx = currentZsetStepIdx + 1;
+    if (nextIdx >= zsetSteps.length) {
+      setCurrentZsetStepIdx(-1);
+      setZsetSteps([]);
+      setHZsetMember(undefined);
+      return;
+    }
+
+    setZsetHistory(prev => [...prev, { zset: [...zsetData], stepIdx: currentZsetStepIdx, hMember: hZsetMember }]);
+    const activeStep = zsetSteps[nextIdx];
+
+    if (activeStep.explanation.includes('重调排序')) {
+      const mem = zsetMemberValue;
+      const score = zsetScoreValue;
+      setZsetData(prev => {
+        const filtered = prev.filter(x => x.member.toLowerCase() !== mem.toLowerCase());
+        const updated = [...filtered, { member: mem, score }].sort((a, b) => b.score - a.score);
+        return updated;
+      });
+      setHZsetMember(mem);
+    }
+
+    setCurrentZsetStepIdx(nextIdx);
+    autoScrollCode(activeStep.line);
+  };
+
+  const prevZsetStep = () => {
+    if (zsetHistory.length === 0) return;
+    const prev = zsetHistory[zsetHistory.length - 1];
+    setZsetData(prev.zset);
+    setCurrentZsetStepIdx(prev.stepIdx);
+    setHZsetMember(prev.hMember);
+    setZsetHistory(history => history.slice(0, history.length - 1));
+    autoScrollCode(zsetSteps[prev.stepIdx].line);
+  };
+
+  const resetZsetState = () => {
+    setZsetData([
+      { member: 'Charlie', score: 68 },
+      { member: 'Bob', score: 85 },
+      { member: 'Alice', score: 92 },
+    ]);
+    setZsetSteps([]);
+    setZsetHistory([]);
+    setCurrentZsetStepIdx(-1);
+    setHZsetMember(undefined);
+  };
+
+  // -----------------------------------------------------------------
+  // 13. BITMAP METHODS
+  // -----------------------------------------------------------------
+  const handleBitmapSet = (bitVal: 0 | 1) => {
+    const offset = bitmapOffsetValue;
+    if (offset < 0 || offset > 15) return;
+    const steps: InteractiveDSStep[] = [];
+
+    const byteIdx = Math.floor(offset / 8);
+
+    steps.push({
+      line: 4,
+      explanation: `[1] 开始对位图 Offset (偏移量) [${offset}] 写入二进制状态值 ${bitVal}。`
+    });
+
+    steps.push({
+      line: 6,
+      explanation: `[映射槽位] 每一个 Byte 容纳 8 位。偏移位 ${offset} 对应第 ${byteIdx} 个字节的第 ${offset % 8} 个 bit。`,
+      highlightedBloomIdxs: [offset]
+    });
+
+    if (bitVal === 1) {
+      steps.push({
+        line: 11,
+        explanation: `[按位或运算] 写入 1（例: 签到成功）：执行 bits[${byteIdx}] |= (1 << ${offset % 8})，置位成功。`,
+        highlightedBloomIdxs: [offset]
+      });
+    } else {
+      steps.push({
+        line: 12,
+        explanation: `[按位与非运算] 写入 0（例: 清除漏签）：执行 bits[${byteIdx}] &= ~(1 << ${offset % 8})，清除置 0。`,
+        highlightedBloomIdxs: [offset]
+      });
+    }
+
+    setBitmapSteps(steps);
+    setCurrentBitmapStepIdx(0);
+    setHBitmapIdx(undefined);
+  };
+
+  const nextBitmapStep = () => {
+    if (currentBitmapStepIdx < 0 || currentBitmapStepIdx >= bitmapSteps.length) return;
+    const nextIdx = currentBitmapStepIdx + 1;
+    if (nextIdx >= bitmapSteps.length) {
+      setCurrentBitmapStepIdx(-1);
+      setBitmapSteps([]);
+      setHBitmapIdx(undefined);
+      return;
+    }
+
+    setBitmapHistory(prev => [...prev, { bits: [...bitmapBits], stepIdx: currentBitmapStepIdx, hBitmapIdx }]);
+    const activeStep = bitmapSteps[nextIdx];
+
+    if (activeStep.explanation.includes('按位或')) {
+      const idx = bitmapOffsetValue;
+      setBitmapBits(prev => {
+        const nextBits = [...prev];
+        nextBits[idx] = 1;
+        return nextBits;
+      });
+      setHBitmapIdx(idx);
+    } else if (activeStep.explanation.includes('按位与非')) {
+      const idx = bitmapOffsetValue;
+      setBitmapBits(prev => {
+        const nextBits = [...prev];
+        nextBits[idx] = 0;
+        return nextBits;
+      });
+      setHBitmapIdx(idx);
+    } else if (activeStep.highlightedBloomIdxs && activeStep.highlightedBloomIdxs.length > 0) {
+      setHBitmapIdx(activeStep.highlightedBloomIdxs[0]);
+    }
+
+    setCurrentBitmapStepIdx(nextIdx);
+    autoScrollCode(activeStep.line);
+  };
+
+  const prevBitmapStep = () => {
+    if (bitmapHistory.length === 0) return;
+    const prev = bitmapHistory[bitmapHistory.length - 1];
+    setBitmapBits(prev.bits);
+    setCurrentBitmapStepIdx(prev.stepIdx);
+    setHBitmapIdx(prev.hBitmapIdx);
+    setBitmapHistory(history => history.slice(0, history.length - 1));
+    autoScrollCode(bitmapSteps[prev.stepIdx].line);
+  };
+
+  const resetBitmapState = () => {
+    setBitmapBits(new Array(16).fill(0));
+    setBitmapSteps([]);
+    setBitmapHistory([]);
+    setCurrentBitmapStepIdx(-1);
+    setHBitmapIdx(undefined);
+  };
+
   // Code definitions for C implementation
   const codes = {
     stack: `#define MAX 6\nint stack[MAX];\nint top = -1;\n\nvoid push(int val) {\n    if (top >= MAX - 1) return;\n    top++;\n    stack[top] = val;\n}\n\nint pop() {\n    if (top < 0) return -1;\n    int val = stack[top];\n    top--;\n    return val;\n}`,
@@ -1214,11 +1604,14 @@ export default function DataStructuresPlayground() {
     graph: `int adj[4][4];\nint visited[4];\n\nvoid bfs(int start) {\n    visited[start] = 1;\n    enqueue(start);\n    while (!isEmpty()) {\n        int u = dequeue();\n        for (int v = 0; v < 4; v++) {\n            if (adj[u][v] && !visited[v]) {\n                visited[v] = 1;\n                enqueue(v);\n            }\n        }\n    }\n}`,
     skiplist: `struct Node {\n    int val;\n    struct Node* forward[4];\n};\nstruct Node* head = NULL;\n\nstruct Node* search(int target) {\n    struct Node* curr = head;\n    for (int i = 3; i >= 0; i--) {\n        while (curr->forward[i] && curr->forward[i]->val < target)\n            curr = curr->forward[i];\n    }\n    curr = curr->forward[0];\n    if (curr && curr->val == target)\n        return curr;\n    return NULL;\n}`,
     bloomfilter: `unsigned char filter[2] = {0}; // 16 bits\n\nint hash1(int x) {\n    return (x * 3 + 5) % 16;\n}\nint hash2(int x) {\n    return (x * 7 + 2) % 16;\n}\n\nvoid insert(int val) {\n    int h1 = hash1(val);\n    int h2 = hash2(val);\n    filter[h1 / 8] |= (1 << (h1 % 8));\n    filter[h2 / 8] |= (1 << (h2 % 8));\n}\n\nbool query(int val) {\n    int h1 = hash1(val);\n    int h2 = hash2(val);\n    bool b1 = filter[h1 / 8] & (1 << (h1 % 8));\n    bool b2 = filter[h2 / 8] & (1 << (h2 % 8));\n    return b1 && b2;\n}`,
+    set: `struct Set {\n    int items[15];\n    int size;\n};\n\nbool contains(struct Set* s, int val) {\n    for (int i = 0; i < s->size; i++) {\n        if (s->items[i] == val) return true;\n    }\n    return false;\n}\n\nvoid insert(struct Set* s, int val) {\n    if (!contains(s, val)) {\n        s->items[s->size++] = val;\n    }\n}`,
+    zset: `struct Member {\n    char member[10];\n    int score;\n};\nstruct Member zset[10];\nint size = 0;\n\nvoid insert(char* name, int score) {\n    int idx = find(name);\n    if (idx != -1) {\n        zset[idx].score = score;\n    } else {\n        strcpy(zset[size].member, name);\n        zset[size].score = score;\n        size++;\n    }\n    sortZSet();\n}`,
+    bitmap: `unsigned char bits[2] = {0}; // 16 bits\n\nvoid setBit(int offset, int val) {\n    int byteIdx = offset / 8;\n    int bitIdx = offset % 8;\n    if (val == 1) {\n        bits[byteIdx] |= (1 << bitIdx);\n    } else {\n        bits[byteIdx] &= ~(1 << bitIdx);\n    }\n}`,
   };
 
   // Direct active configs according to active tab
-  const steps = activeTab === 'stack' ? stackSteps : activeTab === 'queue' ? queueSteps : activeTab === 'linkedlist' ? llSteps : activeTab === 'array' ? arraySteps : activeTab === 'bst' ? bstSteps : activeTab === 'heap' ? heapSteps : activeTab === 'hash' ? hashSteps : activeTab === 'graph' ? graphSteps : activeTab === 'skiplist' ? skipListSteps : bloomSteps;
-  const currIdx = activeTab === 'stack' ? currentStackStepIdx : activeTab === 'queue' ? currentQueueStepIdx : activeTab === 'linkedlist' ? currentLlStepIdx : activeTab === 'array' ? currentArrayStepIdx : activeTab === 'bst' ? currentBstStepIdx : activeTab === 'heap' ? currentHeapStepIdx : activeTab === 'hash' ? currentHashStepIdx : activeTab === 'graph' ? currentGraphStepIdx : activeTab === 'skiplist' ? currentSkipListStepIdx : currentBloomStepIdx;
+  const steps = activeTab === 'stack' ? stackSteps : activeTab === 'queue' ? queueSteps : activeTab === 'linkedlist' ? llSteps : activeTab === 'array' ? arraySteps : activeTab === 'bst' ? bstSteps : activeTab === 'heap' ? heapSteps : activeTab === 'hash' ? hashSteps : activeTab === 'graph' ? graphSteps : activeTab === 'skiplist' ? skipListSteps : activeTab === 'bloomfilter' ? bloomSteps : activeTab === 'set' ? setSteps : activeTab === 'zset' ? zsetSteps : bitmapSteps;
+  const currIdx = activeTab === 'stack' ? currentStackStepIdx : activeTab === 'queue' ? currentQueueStepIdx : activeTab === 'linkedlist' ? currentLlStepIdx : activeTab === 'array' ? currentArrayStepIdx : activeTab === 'bst' ? currentBstStepIdx : activeTab === 'heap' ? currentHeapStepIdx : activeTab === 'hash' ? currentHashStepIdx : activeTab === 'graph' ? currentGraphStepIdx : activeTab === 'skiplist' ? currentSkipListStepIdx : activeTab === 'bloomfilter' ? currentBloomStepIdx : activeTab === 'set' ? currentSetStepIdx : activeTab === 'zset' ? currentZsetStepIdx : currentBitmapStepIdx;
   const currentStep = steps[currIdx];
 
   const handleNextStep = () => {
@@ -1232,6 +1625,9 @@ export default function DataStructuresPlayground() {
     else if (activeTab === 'graph') nextGraphStep();
     else if (activeTab === 'skiplist') nextSkipListStep();
     else if (activeTab === 'bloomfilter') nextBloomStep();
+    else if (activeTab === 'set') nextSetStep();
+    else if (activeTab === 'zset') nextZsetStep();
+    else if (activeTab === 'bitmap') nextBitmapStep();
   };
 
   const handlePrevStep = () => {
@@ -1245,9 +1641,12 @@ export default function DataStructuresPlayground() {
     else if (activeTab === 'graph') prevGraphStep();
     else if (activeTab === 'skiplist') prevSkipListStep();
     else if (activeTab === 'bloomfilter') prevBloomStep();
+    else if (activeTab === 'set') prevSetStep();
+    else if (activeTab === 'zset') prevZsetStep();
+    else if (activeTab === 'bitmap') prevBitmapStep();
   };
 
-  // Tab configurations (Bento Style Layout - 10 items)
+  // Tab configurations (Bento Style Layout - 13 items)
   const TABS = [
     { key: 'stack' as const, name: '1. Stack 顺序栈', details: 'LIFO 先进后出模型' },
     { key: 'queue' as const, name: '2. Queue 顺序队列', details: 'FIFO 极速双指排队' },
@@ -1259,6 +1658,9 @@ export default function DataStructuresPlayground() {
     { key: 'graph' as const, name: '8. Graph 图与BFS', details: '4阶无向邻接矩阵' },
     { key: 'skiplist' as const, name: '9. SkipList 跳表', details: '多层分级 指数级跨越检索' },
     { key: 'bloomfilter' as const, name: '10. BloomFilter 布隆过滤器', details: '哈希位图 概率过滤高位压缩' },
+    { key: 'set' as const, name: '11. Set 无序集合', details: '哈希结构 唯一去重交并差集' },
+    { key: 'zset' as const, name: '12. ZSet 有序集合', details: '跳表双指针 元素带权排行榜' },
+    { key: 'bitmap' as const, name: '13. Bitmap 极速位图', details: '字节级别按位压缩 状态位秒算' },
   ];
 
   return (
@@ -1267,13 +1669,13 @@ export default function DataStructuresPlayground() {
         <div>
           <h2 className="font-extrabold text-[22px] font-sans flex items-center gap-2">
             <span>💻 数据结构全景演练场</span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--accent-dim)] border border-[rgba(0,229,255,0.15)] text-[var(--accent)] font-mono uppercase tracking-wider">PANORAMA (10 MODELS)</span>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--accent-dim)] border border-[rgba(0,229,255,0.15)] text-[var(--accent)] font-mono uppercase tracking-wider">PANORAMA (13 MODELS)</span>
           </h2>
-          <p className="text-[13px] text-[var(--text-sec)] font-light mt-1">C 语言原生态指针、堆栈、非线性树、堆、哈希拉链、跳表、布隆过滤器以及图论遍历的全景演练。</p>
+          <p className="text-[13px] text-[var(--text-sec)] font-light mt-1">C 语言原生态指针、堆栈、非线性树、堆、哈希拉链、跳表、布隆过滤器、集合、有序表、位图以及图论遍历的全景演练。</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-4 border-b border-[var(--border)] pb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2 mt-4 border-b border-[var(--border)] pb-4">
         {TABS.map(tab => (
           <button
             key={tab.key}
@@ -1673,6 +2075,182 @@ export default function DataStructuresPlayground() {
               </div>
             )}
 
+            {/* 无序集合 SET VISUAL */}
+            {activeTab === 'set' && (
+              <div className="flex flex-col gap-4 w-full select-none justify-center">
+                <div className="font-mono text-[10px] text-[var(--text-muted)] text-center uppercase">Venn Set 集合模型 (去重、并集、交集、差集演示)</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Set A Panel */}
+                  <div className="bg-emerald-950/10 border border-emerald-500/20 rounded p-3">
+                    <div className="flex items-center justify-between border-b border-emerald-500/10 pb-1 mb-2">
+                      <span className="text-xs font-mono font-bold text-emerald-400">Set A (集合A)</span>
+                      <span className="text-[10px] font-mono text-zinc-500">size: {setA.length}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 min-h-[48px] items-center">
+                      {setA.length === 0 ? (
+                        <span className="text-xs text-zinc-600 font-light italic">空集 ∅</span>
+                      ) : (
+                        setA.map(val => {
+                          const isHighlighted = hSetKeys.includes(`union-${val}`) || hSetKeys.includes(`inter-${val}`) || hSetKeys.includes(`diff-${val}`);
+                          return (
+                            <div
+                              key={val}
+                              onClick={() => handleSetDelete(val, 'A')}
+                              title="点击快捷移除元素"
+                              className={`group cursor-pointer px-2.5 py-1 rounded-full border text-xs font-mono transition-all flex items-center gap-1 ${isHighlighted ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.15)] font-bold' : 'bg-black/30 border-emerald-500/30 text-emerald-300 hover:border-red-500/60 hover:text-red-400'}`}
+                            >
+                              <span>{val}</span>
+                              <span className="text-[9px] text-zinc-600 group-hover:text-red-400 font-bold ml-0.5">×</span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Set B Panel */}
+                  <div className="bg-purple-950/10 border border-purple-500/20 rounded p-3">
+                    <div className="flex items-center justify-between border-b border-purple-500/10 pb-1 mb-2">
+                      <span className="text-xs font-mono font-bold text-purple-400">Set B (集合B)</span>
+                      <span className="text-[10px] font-mono text-zinc-500">size: {setB.length}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 min-h-[48px] items-center">
+                      {setB.length === 0 ? (
+                        <span className="text-xs text-zinc-600 font-light italic">空集 ∅</span>
+                      ) : (
+                        setB.map(val => {
+                          const isHighlighted = hSetKeys.includes(`union-${val}`) || hSetKeys.includes(`inter-${val}`);
+                          return (
+                            <div
+                              key={val}
+                              onClick={() => handleSetDelete(val, 'B')}
+                              title="点击快捷移除元素"
+                              className={`group cursor-pointer px-2.5 py-1 rounded-full border text-xs font-mono transition-all flex items-center gap-1 ${isHighlighted ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.15)] font-bold' : 'bg-black/30 border-purple-500/30 text-purple-300 hover:border-red-500/60 hover:text-red-400'}`}
+                            >
+                              <span>{val}</span>
+                              <span className="text-[9px] text-zinc-600 group-hover:text-red-400 font-bold ml-0.5">×</span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Operation result render cards */}
+                {hSetKeys.length > 0 && (
+                  <div className="bg-amber-500/5 border border-amber-500/20 rounded p-2.5 text-center transition-all animate-fade-in">
+                    <span className="text-[10.5px] font-sans text-amber-400 block mb-1 font-semibold">💻 运算结果 (Result Panel)</span>
+                    <div className="flex justify-center flex-wrap gap-1.5 mt-1.5">
+                      {hSetKeys.map((key) => {
+                        const val = key.split('-')[1];
+                        return (
+                          <span key={key} className="px-2 py-0.5 rounded border border-amber-400/50 bg-amber-500/15 text-amber-200 font-mono text-xs font-bold shadow-[0_0_6px_rgba(245,158,11,0.1)]">
+                            {val}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="text-[9.5px] text-zinc-500 text-center font-light leading-snug">
+                  * 提示: 集合不允许包含重复项。点击元素右侧 X 符号可直接从集合中踢除元素。
+                </div>
+              </div>
+            )}
+
+            {/* 有序集合 ZSET VISUAL */}
+            {activeTab === 'zset' && (
+              <div className="flex flex-col gap-3.5 w-full select-none justify-center">
+                <div className="font-mono text-[10px] text-[var(--text-muted)] text-center uppercase">Sorted Set Leaderboard 排行榜模型 (KV 有序检索)</div>
+                <div className="flex flex-col gap-1.5 max-w-[340px] w-full mx-auto bg-black/20 p-3 rounded border border-zinc-850">
+                  {zsetData.map((item, idx) => {
+                    const isTarget = hZsetMember === item.member;
+                    return (
+                      <div
+                        key={item.member}
+                        className={`flex items-center justify-between px-3 py-2 rounded border transition-all duration-300 ${isTarget ? 'bg-amber-500/10 border-amber-500/50 text-amber-300 scale-[1.02] shadow-[0_0_10px_rgba(245,158,11,0.15)] font-extrabold' : 'bg-black/35 border-zinc-800 text-zinc-300'}`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-mono font-bold ${idx === 0 ? 'bg-amber-450 text-black' : idx === 1 ? 'bg-zinc-400 text-black' : idx === 2 ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+                            {idx + 1}
+                          </span>
+                          <span className="text-xs font-sans font-medium">{item.member}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono text-emerald-400 font-bold">{item.score} <span className="text-[8px] text-zinc-500 font-normal">分</span></span>
+                          <button
+                            onClick={() => handleZSetIncr(item.member, 5)}
+                            className="w-4 h-4 rounded bg-zinc-805 hover:bg-emerald-500/20 text-zinc-400 hover:text-emerald-400 text-[10px] font-bold border border-transparent hover:border-emerald-500/30 flex items-center justify-center transition-colors shadow-sm"
+                            title="分数 +5"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="text-[9.5px] text-zinc-500 text-center font-light leading-snug">
+                  * 提示: ZSet 集合以元素名称(key)唯一，对应分数进行动态排行。成员加分可自动升降改变名次。
+                </div>
+              </div>
+            )}
+
+            {/* 位图 BITMAP VISUAL */}
+            {activeTab === 'bitmap' && (
+              <div className="flex flex-col gap-3.5 w-full select-none justify-center">
+                <div className="font-mono text-[10px] text-[var(--text-muted)] text-center uppercase">16-Bit Byte Array 按位存储模型 (16天连续签到演示)</div>
+                
+                {/* Visual Attendance Calendar Grid */}
+                <div className="grid grid-cols-4 gap-2.5 max-w-[340px] w-full mx-auto bg-black/15 p-3.5 rounded border border-zinc-800">
+                  {bitmapBits.map((bit, idx) => {
+                    const isTarget = hBitmapIdx === idx;
+                    const dayNum = idx + 1;
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setBitmapOffsetValue(idx);
+                          handleBitmapSet(bit === 1 ? 0 : 1);
+                        }}
+                        title={`第 ${dayNum} 天，点击快捷切换签到状态`}
+                        className={`cursor-pointer flex flex-col items-center justify-between p-2 rounded border transition-all duration-300 hover:scale-[1.03] ${isTarget ? 'bg-amber-500/20 border-amber-400 text-amber-300 scale-105 shadow-[0_0_8px_rgba(245,158,11,0.25)]' : bit === 1 ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.05)]' : 'bg-black/30 border-zinc-850 text-zinc-500 hover:border-zinc-700'}`}
+                      >
+                        <span className="text-[8.5px] font-mono text-zinc-500">Day {dayNum}</span>
+                        <div className="my-1 text-center">
+                          {bit === 1 ? (
+                            <span className="text-emerald-400 font-bold text-xs select-none">✔ 签到</span>
+                          ) : (
+                            <span className="text-zinc-600 font-light text-[10.5px] select-none">未签</span>
+                          )}
+                        </div>
+                        <span className="text-[7.5px] font-mono text-zinc-650 shrink-0">bit: #{idx}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* Byte diagnostics summary */}
+                <div className="text-center bg-black/25 py-2 px-3 rounded max-w-[340px] mx-auto border border-zinc-850 flex items-center justify-around font-mono text-[9.5px] text-zinc-400">
+                  <div>
+                    <span className="text-zinc-500 block">Byte 0 (位#0-7)</span>
+                    <span className="text-zinc-300 font-bold">{bitmapBits.slice(0, 8).join('')}</span>
+                  </div>
+                  <div className="w-px h-5 bg-zinc-800"></div>
+                  <div>
+                    <span className="text-zinc-500 block">Byte 1 (位#8-15)</span>
+                    <span className="text-zinc-300 font-bold">{bitmapBits.slice(8, 16).join('')}</span>
+                  </div>
+                </div>
+
+                <div className="text-[9.5px] text-zinc-500 text-center font-light leading-snug">
+                  * 提示: 字节级别位操作，仅用 2 字节(16字节比)记录 16 天考勤，内存利用率相比结构体提升 98%+。
+                </div>
+              </div>
+            )}
+
           </div>
 
           {/* Controls & Inputs */}
@@ -1822,6 +2400,59 @@ export default function DataStructuresPlayground() {
                   <button onClick={handleBloomQuery} className="px-2 py-0.5 bg-[var(--accent-dim)] text-[var(--accent)] hover:border-[var(--accent)] border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-mono">query() 校验</button>
                   <button onClick={handleBloomInsert} className="px-2 py-0.5 bg-emerald-500/15 text-emerald-400 hover:border-emerald-500 border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-mono font-bold animate-pulse">insert() 注册</button>
                   <button onClick={resetBloomState} className="px-2 py-0.5 bg-zinc-800 text-zinc-350 text-[10.5px] rounded cursor-pointer">清空位图</button>
+                </div>
+              )}
+              {activeTab === 'set' && (
+                <div className="flex items-center gap-1.5 flex-wrap text-[11px] mt-1">
+                  <span className="text-[var(--text-sec)]">元素值 (1-99):</span>
+                  <input
+                    type="number"
+                    value={setInputValue}
+                    onChange={e => setSetInputValue(Math.min(99, Math.max(1, parseInt(e.target.value) || 1)))}
+                    className="w-11 px-1 py-0.5 border border-[var(--border)] rounded bg-black/30 text-center font-mono focus:outline-none"
+                  />
+                  <button onClick={() => handleSetInsert('A')} className="px-2 py-0.5 bg-emerald-500/15 text-emerald-400 hover:border-emerald-500 border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-semibold">→ Set A 插入</button>
+                  <button onClick={() => handleSetInsert('B')} className="px-2 py-0.5 bg-purple-500/15 text-purple-400 hover:border-purple-500 border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-semibold">→ Set B 插入</button>
+                  <div className="w-[1px] h-4 bg-zinc-800 mx-1"></div>
+                  <button onClick={handleSetUnion} className="px-2 py-0.5 bg-[var(--accent-dim)] text-[var(--accent)] hover:border-[var(--accent)] border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-mono font-bold">A ∪ B (并集)</button>
+                  <button onClick={handleSetIntersect} className="px-2 py-0.5 bg-[var(--accent-dim)] text-[var(--accent)] hover:border-[var(--accent)] border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-mono font-bold">A ∩ B (交集)</button>
+                  <button onClick={handleSetDifference} className="px-2 py-0.5 bg-[var(--accent-dim)] text-[var(--accent)] hover:border-[var(--accent)] border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-mono font-bold">A - B (差集)</button>
+                  <button onClick={resetSetState} className="px-2 py-0.5 bg-zinc-800 text-zinc-350 text-[10.5px] rounded cursor-pointer">重置集合</button>
+                </div>
+              )}
+              {activeTab === 'zset' && (
+                <div className="flex items-center gap-2 flex-wrap text-[11px] mt-1">
+                  <span className="text-[var(--text-sec)]">成员 (Key):</span>
+                  <input
+                    type="text"
+                    value={zsetMemberValue}
+                    onChange={e => setZsetMemberValue(e.target.value.slice(0, 10))}
+                    placeholder="David"
+                    className="w-16 px-1.5 py-0.5 border border-[var(--border)] rounded bg-black/30 font-sans focus:outline-none text-[11px]"
+                  />
+                  <span className="text-[var(--text-sec)]">评分:</span>
+                  <input
+                    type="number"
+                    value={zsetScoreValue}
+                    onChange={e => setZsetScoreValue(Math.min(999, Math.max(1, parseInt(e.target.value) || 1)))}
+                    className="w-12 px-1 py-0.5 border border-[var(--border)] rounded bg-black/30 text-center font-mono focus:outline-none"
+                  />
+                  <button onClick={handleZSetInsert} className="px-2.5 py-0.5 bg-emerald-500/15 text-emerald-400 hover:border-emerald-500 border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-mono font-bold">add / update() 双操作</button>
+                  <button onClick={resetZsetState} className="px-2 py-0.5 bg-zinc-800 text-zinc-350 text-[10.5px] rounded cursor-pointer">恢复默认</button>
+                </div>
+              )}
+              {activeTab === 'bitmap' && (
+                <div className="flex items-center gap-1.5 flex-wrap text-[11px] mt-1">
+                  <span className="text-[var(--text-sec)]">Offset (0-15):</span>
+                  <input
+                    type="number"
+                    value={bitmapOffsetValue}
+                    onChange={e => setBitmapOffsetValue(Math.min(15, Math.max(0, parseInt(e.target.value) || 0)))}
+                    className="w-10 px-1 py-0.5 border border-[var(--border)] rounded bg-black/30 text-center font-mono focus:outline-none"
+                  />
+                  <button onClick={() => handleBitmapSet(1)} className="px-2.5 py-0.5 bg-emerald-500/15 text-emerald-400 hover:border-emerald-500 border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-bold select-none">setBit(1) 签到成功</button>
+                  <button onClick={() => handleBitmapSet(0)} className="px-2.5 py-0.5 bg-red-500/15 text-red-400 hover:border-red-500 border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-bold select-none">setBit(0) 漏卡补置</button>
+                  <button onClick={resetBitmapState} className="px-2 py-0.5 bg-zinc-800 text-zinc-350 text-[10.5px] rounded cursor-pointer">清空状态</button>
                 </div>
               )}
             </div>
