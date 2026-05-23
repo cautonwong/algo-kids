@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "ALGO-VIZ PRO",
+  "description": "An interactive, high-fidelity visualizer for classic data structures and algorithms, featuring line-by-line runtime stack analysis, custom array inputs, and multi-language code translation.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

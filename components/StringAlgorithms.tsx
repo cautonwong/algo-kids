@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { highlightCode } from '@/lib/syntax';
+import { highlightCode, getTranslatedCode } from '@/lib/syntax';
 
 interface StringDSStep {
   line: number;
@@ -130,6 +130,7 @@ export default function StringAlgorithms() {
   const [activeAlgoId, setActiveAlgoId] = useState<'naive' | 'kmp' | 'rabinkarp'>('naive');
   const [textVal, setTextVal] = useState('ABABDABACDABABCABLE');
   const [patternVal, setPatternVal] = useState('ABABC');
+  const [lang, setLang] = useState<'c' | 'python' | 'javascript'>('c');
 
   const [prevInputs, setPrevInputs] = useState({ algo: 'naive', txt: 'ABABDABACDABABCABLE', pat: 'ABABC' });
   const [curStepIdx, setCurStepIdx] = useState(0);
@@ -839,9 +840,41 @@ export default function StringAlgorithms() {
         </div>
 
         {/* 2. SOURCE CODE PANEL */}
-        <div className="flex flex-col max-h-[380px] lg:max-h-[460px] bg-zinc-950 relative" ref={containerRef}>
+        <div className="flex flex-col max-h-[380px] lg:max-h-[460px] bg-zinc-950 relative border border-zinc-900 rounded" ref={containerRef}>
+          <div className="p-2 border-b border-zinc-900 bg-zinc-950/40 flex justify-between items-center text-[11px] px-4 font-mono select-none">
+            <span className="text-zinc-[var(--text-muted)] tracking-wide">💻 CODE PREVIEW</span>
+            <div className="flex items-center gap-2">
+              {(['c', 'python', 'javascript'] as const).map(l => (
+                <button
+                  key={l}
+                  onClick={() => { setLang(l); setPlaying(false); }}
+                  className={`px-1.5 py-0.5 rounded transition-all text-[9.5px] tracking-wide border uppercase ${lang === l ? 'border-[var(--accent)] bg-[var(--accent-dim)] text-[var(--accent)] font-bold' : 'border-transparent text-zinc-400 hover:text-white'}`}
+                >
+                  {l === 'javascript' ? 'JS' : l}
+                </button>
+              ))}
+              <span className="text-zinc-850">|</span>
+              <button 
+                onClick={() => {
+                  const translated = getTranslatedCode(currentAlgo.code, lang);
+                  const blob = new Blob([translated], { type: 'text/plain;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  const extension = lang === 'c' ? 'c' : lang === 'python' ? 'py' : 'js';
+                  link.download = `${currentAlgo.id}.${extension}`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }} 
+                className="px-2 py-0.5 border border-zinc-900 rounded bg-black/25 hover:border-[var(--accent)] hover:text-white text-zinc-400 text-[10px] transition-all"
+                title="导出独立本端可执行源码"
+              >
+                📥 导出
+              </button>
+            </div>
+          </div>
           <div className="flex-1 overflow-y-auto py-3 bg-[var(--bg-code)] font-mono text-[11.5px] md:text-[12px] leading-[1.8] scrollbar-thin scrollbar-thumb-zinc-800">
-            {currentAlgo.code.split(/\n/).map((line, idx) => {
+            {getTranslatedCode(currentAlgo.code, lang).split(/\n/).map((line, idx) => {
               const isActive = activeStep.line === idx;
               return (
                 <div 
@@ -850,12 +883,12 @@ export default function StringAlgorithms() {
                   className={`code-line flex py-[1px] pr-[14px] cursor-pointer transition-all border-l-[3px] ${isActive ? 'active border-[var(--accent)] bg-[var(--accent-dim)]' : 'border-transparent hover:bg-white/5'}`}
                   onClick={() => { setPlaying(false); setCurStepIdx(steps.findIndex(s => s.line === idx) || 0); }}
                 >
-                  <span className="line-num w-8 text-right pr-2.5 text-zinc-600 select-none shrink-0 text-[10.5px] font-mono">
+                  <span className="line-num w-8 text-right pr-2.5 text-zinc-605 select-none shrink-0 text-[10.5px] font-mono">
                     {isActive ? '▶' : (idx + 1)}
                   </span>
                   <span 
                     className="flex-1 whitespace-pre text-zinc-300 font-mono"
-                    dangerouslySetInnerHTML={{ __html: highlightCode(line) }}
+                    dangerouslySetInnerHTML={{ __html: highlightCode(line, lang) }}
                   />
                 </div>
               );
@@ -864,7 +897,7 @@ export default function StringAlgorithms() {
 
           {/* Comment description at bottom of code panel */}
           <div className="p-3 px-4 min-h-[48px] bg-black border-t border-zinc-900 text-[12.5px] text-zinc-400 leading-[1.6] flex items-start gap-2">
-            <span className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-full bg-zinc-800 text-zinc-300 font-sans text-[10px] mt-[2px]">c</span>
+            <span className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-full bg-zinc-800 text-zinc-300 font-sans text-[10px] mt-[2px]">{lang === 'javascript' ? 'js' : lang}</span>
             <span key={activeStep.line} className="animate-fadeIn flex-1 text-zinc-400">
               {currentAlgo.explains[activeStep.line] || (activeStep.line === -1 ? '算法匹配探索完全执行完毕!' : '点击步骤播放按钮，可在左侧实时跟踪 C 语言指针的跳转轨迹')}
             </span>

@@ -46,7 +46,7 @@ export default function Page() {
         <div className="font-extrabold text-[15px] text-[var(--accent)] tracking-wide pointer-events-none">ALGO-VIZ</div>
         <div className="flex gap-1">
           <a href="#overview" className="px-3.5 py-1.5 rounded-full text-[12.5px] text-[var(--text-sec)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-colors">全景速览</a>
-          <a href="#data-structures" className="px-3.5 py-1.5 rounded-full text-[12.5px] text-[var(--text-sec)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-colors">数据结构 (4)</a>
+          <a href="#data-structures" className="px-3.5 py-1.5 rounded-full text-[12.5px] text-[var(--text-sec)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-colors">数据结构 (10)</a>
           <a href="#sorting" className="px-3.5 py-1.5 rounded-full text-[12.5px] text-[var(--text-sec)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-colors">排序 ({SORTING.length})</a>
           <a href="#searching" className="px-3.5 py-1.5 rounded-full text-[12.5px] text-[var(--text-sec)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-colors">搜索 ({SEARCHING.length})</a>
           <a href="#string-algos" className="px-3.5 py-1.5 rounded-full text-[12.5px] text-[var(--text-sec)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-colors">字符串匹配 ({3})</a>
@@ -62,7 +62,7 @@ export default function Page() {
         <p className="mt-3 text-[16px] text-[var(--text-sec)] font-light">零基础起步 · 逐行读懂 C 语言代码 · 100% 交互式可视化</p>
         <div className="flex gap-2.5 justify-center mt-6 flex-wrap">
           <span className="px-4 py-1.5 border border-[var(--border)] rounded-full text-[12px] text-[var(--text-sec)] font-mono bg-[rgba(12,12,26,0.5)]">
-            4 种核心数据结构
+            10 种核心数据结构
           </span>
           <span className="px-4 py-1.5 border border-[var(--border)] rounded-full text-[12px] text-[var(--text-sec)] font-mono bg-[rgba(12,12,26,0.5)]">
             {SORTING.length} 种经典排序算法

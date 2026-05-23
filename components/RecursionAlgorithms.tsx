@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { highlightCode } from '@/lib/syntax';
+import { highlightCode, getTranslatedCode } from '@/lib/syntax';
 
 interface StackFrame {
   name: string;
@@ -470,9 +470,15 @@ const RECURSION_DEFS: MiniRecDef[] = [
       '深度递归：进而把右部分隔区间 arr[m+1..r] 递归排序安妥',
       '无缝织网缝合：双指针有序合并左段与右段到最终原地更新，完成整体上升'
     ],
-    genSteps: () => {
+    genSteps: (inputs: Record<string, any>) => {
       const s: RecursionStep[] = [];
-      const orig = [38, 27, 43, 3, 9, 82, 10];
+      let orig = [38, 27, 43, 3, 9, 82, 10];
+      if (inputs?.recArrStr) {
+        const custom = inputs.recArrStr.split(/[,，\s]+/).map((x: string) => parseInt(x.trim())).filter((x: number) => !isNaN(x) && x >= 1 && x <= 99);
+        if (custom.length >= 3) {
+          orig = custom.slice(0, 10);
+        }
+      }
       const arr = [...orig];
       const stack: StackFrame[] = [];
 
@@ -571,9 +577,16 @@ const RECURSION_DEFS: MiniRecDef[] = [
       '分裂递归：把划分线右盘（全部严格大于标杆的各散件）也送去深层快速排序',
       '外圈闭合归合'
     ],
-    genSteps: () => {
+    genSteps: (inputs: Record<string, any>) => {
       const s: RecursionStep[] = [];
-      const arr = [24, 9, 35, 12, 18, 5];
+      let orig = [24, 9, 35, 12, 18, 5];
+      if (inputs?.recArrStr) {
+        const custom = inputs.recArrStr.split(/[,，\s]+/).map((x: string) => parseInt(x.trim())).filter((x: number) => !isNaN(x) && x >= 1 && x <= 99);
+        if (custom.length >= 3) {
+          orig = custom.slice(0, 10);
+        }
+      }
+      const arr = [...orig];
       const stack: StackFrame[] = [];
 
       function qSort(low: number, high: number) {
@@ -777,9 +790,9 @@ const RECURSION_DEFS: MiniRecDef[] = [
       '**回溯擦屁股**：不妙，后续列冲突彻底无解。必须及时收回防线并抹消当前设防（状态归 0），尝试考察下一行',
       '整列探索均在冲突重创下溃败，宣告此段布局彻底崩塌，向原上司请求返回 false'
     ],
-    genSteps: () => {
+    genSteps: (inputs: Record<string, any>) => {
       const s: RecursionStep[] = [];
-      const N = 4;
+      const N = inputs?.queensN || 4;
       const stack: StackFrame[] = [];
       
       const board: boolean[][] = Array.from({ length: N }, () => new Array(N).fill(false));
@@ -1115,6 +1128,9 @@ export default function RecursionAlgorithms() {
   const [hanoiDisks, setHanoiDisks] = useState(3);
   const [searchTarget, setSearchTarget] = useState(26);
   const [pStr, setPStr] = useState('ABC');
+  const [recArrStr, setRecArrStr] = useState('38, 27, 43, 3, 9, 82, 10');
+  const [queensN, setQueensN] = useState(4);
+  const [lang, setLang] = useState<'c' | 'python' | 'javascript'>('c');
 
   const [curStepIdx, setCurStepIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -1124,7 +1140,7 @@ export default function RecursionAlgorithms() {
   const currentAlgo = RECURSION_DEFS.find(a => a.id === activeAlgoId)!;
   const speedMs = 950 - sliderVal;
 
-  const currentKey = `${activeAlgoId}-${nVal}-${fibN}-${hanoiDisks}-${searchTarget}-${pStr}`;
+  const currentKey = `${activeAlgoId}-${nVal}-${fibN}-${hanoiDisks}-${searchTarget}-${pStr}-${recArrStr}-${queensN}`;
   const [prevKey, setPrevKey] = useState('');
 
   if (prevKey !== currentKey) {
@@ -1138,7 +1154,9 @@ export default function RecursionAlgorithms() {
     fibN,
     hanoiDisks,
     searchTarget,
-    pStr
+    pStr,
+    recArrStr,
+    queensN
   });
 
   const activeStep = steps[curStepIdx] || { line: -1, msg: '就绪中', stack: [] };
@@ -1271,6 +1289,35 @@ export default function RecursionAlgorithms() {
             <div className="flex flex-col gap-1">
               <span className="text-[10px] text-zinc-500 uppercase font-mono">排列原子符串:</span>
               <input type="text" maxLength={3} value={pStr} onChange={e => setPStr(e.target.value.toUpperCase().replace(/[^A-Z]/g,'') || 'ABC')} className="px-2.5 py-1 w-[80px] border border-zinc-800 bg-black text-[13px] font-mono text-[var(--accent)] text-center focus:outline-none rounded" />
+            </div>
+          )}
+
+          {(activeAlgoId === 'r_merge' || activeAlgoId === 'r_quick') && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-zinc-500 uppercase font-mono">自定义数组:</span>
+              <input
+                type="text"
+                placeholder="如: 38,27,43,3,9"
+                value={recArrStr}
+                onChange={e => setRecArrStr(e.target.value)}
+                className="px-2.5 py-1 w-[160px] border border-zinc-800 bg-black text-[12px] font-mono text-[var(--accent)] text-center focus:outline-none rounded"
+                title="输入用逗号分隔的数组，如: 10,22,5,82"
+              />
+            </div>
+          )}
+
+          {activeAlgoId === 'r_queens' && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-zinc-500 uppercase font-mono">皇后数量 N (4-6):</span>
+              <select 
+                value={queensN} 
+                onChange={e => setQueensN(parseInt(e.target.value))} 
+                className="px-2.5 py-1 border border-zinc-855 bg-black text-[13px] font-mono text-[var(--accent)] text-center focus:outline-none rounded"
+              >
+                {[4, 5, 6].map(n => (
+                  <option key={n} value={n}>{n} 皇后</option>
+                ))}
+              </select>
             </div>
           )}
 
@@ -1432,7 +1479,10 @@ export default function RecursionAlgorithms() {
               {/* N-QUEENS PLAYGROUND */}
               {activeAlgoId === 'r_queens' && activeStep.queensBoard && (
                 <div className="flex-1 flex flex-col justify-center items-center py-2">
-                  <div className="grid grid-cols-4 gap-1 border border-zinc-800 p-1 bg-black/40 rounded shadow-md">
+                  <div 
+                    className="grid gap-1 border border-zinc-800 p-1 bg-black/40 rounded shadow-md"
+                    style={{ gridTemplateColumns: `repeat(${activeStep.queensBoard.length}, minmax(0, 1fr))` }}
+                  >
                     {activeStep.queensBoard.map((rowArr, rIdx) => 
                       rowArr.map((hasQueen, cIdx) => {
                         const isConflictPos = activeStep.queensConflict && activeStep.queensConflict[0] === rIdx && activeStep.queensConflict[1] === cIdx;
@@ -1611,23 +1661,55 @@ export default function RecursionAlgorithms() {
         </div>
 
         {/* RIGHT COMPONENT: HIGH-STYLIZED C CODE HIGHLIGHT */}
-        <div className="flex flex-col max-h-[380px] lg:max-h-[460px] bg-zinc-950 relative" ref={containerRef}>
+        <div className="flex flex-col max-h-[380px] lg:max-h-[460px] bg-zinc-950 relative border border-zinc-900 rounded" ref={containerRef}>
+          <div className="p-2 border-b border-zinc-900 bg-zinc-950/40 flex justify-between items-center text-[11px] px-4 font-mono select-none">
+            <span className="text-zinc-500 tracking-wide">💻 CODE PREVIEW</span>
+            <div className="flex items-center gap-2">
+              {(['c', 'python', 'javascript'] as const).map(l => (
+                <button
+                  key={l}
+                  onClick={() => { setLang(l); setPlaying(false); }}
+                  className={`px-1.5 py-0.5 rounded transition-all text-[9.5px] tracking-wide border uppercase ${lang === l ? 'border-purple-500 bg-purple-950/20 text-purple-400 font-bold' : 'border-transparent text-zinc-400 hover:text-white'}`}
+                >
+                  {l === 'javascript' ? 'JS' : l}
+                </button>
+              ))}
+              <span className="text-zinc-800">|</span>
+              <button 
+                onClick={() => {
+                  const translated = getTranslatedCode(currentAlgo.code, lang);
+                  const blob = new Blob([translated], { type: 'text/plain;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  const extension = lang === 'c' ? 'c' : lang === 'python' ? 'py' : 'js';
+                  link.download = `${currentAlgo.id}.${extension}`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }} 
+                className="px-2 py-0.5 border border-zinc-900 rounded bg-black/25 hover:border-purple-500 hover:text-white text-zinc-400 text-[10px] transition-all"
+                title="导出独立本端可执行源码"
+              >
+                📥 导出
+              </button>
+            </div>
+          </div>
           <div className="flex-1 overflow-y-auto py-3 bg-[var(--bg-code)] font-mono text-[11.5px] md:text-[12px] leading-[1.8] scrollbar-thin scrollbar-thumb-zinc-800">
-            {currentAlgo.code.split(/\n/).map((line, idx) => {
+            {getTranslatedCode(currentAlgo.code, lang).split(/\n/).map((line, idx) => {
               const isActive = activeStep.line === idx;
               return (
                 <div 
-                  key={idx} 
-                  data-rec-line={idx} 
-                  className={`code-line flex py-[1px] pr-[14px] cursor-pointer transition-all border-l-[3px] ${isActive ? 'active border-purple-500 bg-purple-950/15' : 'border-transparent hover:bg-white/5'}`}
-                  onClick={() => { setPlaying(false); setCurStepIdx(steps.findIndex(s => s.line === idx) || 0); }}
+                   key={idx} 
+                   data-rec-line={idx} 
+                   className={`code-line flex py-[1px] pr-[14px] cursor-pointer transition-all border-l-[3px] ${isActive ? 'active border-purple-500 bg-purple-950/15' : 'border-transparent hover:bg-white/5'}`}
+                   onClick={() => { setPlaying(false); setCurStepIdx(steps.findIndex(s => s.line === idx) || 0); }}
                 >
                   <span className="line-num w-8 text-right pr-2.5 text-zinc-650 select-none shrink-0 text-[10.5px] font-mono">
                     {isActive ? '▶' : (idx + 1)}
                   </span>
                   <span 
                     className="flex-1 whitespace-pre text-zinc-300 font-mono"
-                    dangerouslySetInnerHTML={{ __html: highlightCode(line) }}
+                    dangerouslySetInnerHTML={{ __html: highlightCode(line, lang) }}
                   />
                 </div>
               );
@@ -1636,7 +1718,7 @@ export default function RecursionAlgorithms() {
 
           {/* Micro instruction block at footer of code panel */}
           <div className="p-3.5 px-4 min-h-[48px] bg-black border-t border-zinc-900 text-[12.5px] text-zinc-450 leading-[1.6] flex items-start gap-2">
-            <span className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-full bg-zinc-800 text-zinc-300 font-sans text-[10px] mt-[2px]">c</span>
+            <span className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-full bg-zinc-800 text-zinc-300 font-sans text-[10px] mt-[2px]">{lang === 'javascript' ? 'js' : lang}</span>
             <span key={activeStep.line} className="animate-fadeIn flex-1 text-zinc-400">
               {currentAlgo.explains[activeStep.line] || (activeStep.line === -1 ? '递归探索完全执行到位!' : '使用上方控制面板播放，系统底盘调用栈内存深度将与 C 源代码行精确映射关联同步')}
             </span>

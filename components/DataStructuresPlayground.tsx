@@ -1,17 +1,44 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { highlightCode } from '@/lib/syntax';
+import { highlightCode, getTranslatedCode } from '@/lib/syntax';
 
 // Visual structural step definition
 interface InteractiveDSStep {
   line: number;
   explanation: string;
   highlightedIndices?: number[];
+  highlightedNodeLevel?: { val: number | 'H'; level: number };
+  highlightedBloomIdxs?: number[];
 }
 
 export default function DataStructuresPlayground() {
-  const [activeTab, setActiveTab] = useState<'stack' | 'queue' | 'linkedlist' | 'array' | 'bst' | 'heap' | 'hash' | 'graph'>('stack');
+  const [activeTab, setActiveTab] = useState<'stack' | 'queue' | 'linkedlist' | 'array' | 'bst' | 'heap' | 'hash' | 'graph' | 'skiplist' | 'bloomfilter'>('stack');
+  const [lang, setLang] = useState<'c' | 'python' | 'javascript'>('c');
+
+  // --- Skip List State & Engine ---
+  const [skipListNodes, setSkipListNodes] = useState<{ val: number | 'H'; levels: boolean[] }[]>([
+    { val: 'H', levels: [true, true, true, true] },
+    { val:  8,  levels: [true, true, true, true] },
+    { val: 19,  levels: [true, false, false, false] },
+    { val: 31,  levels: [true, true, false, false] },
+    { val: 43,  levels: [true, false, false, false] },
+    { val: 57,  levels: [true, true, true, false] },
+    { val: 72,  levels: [true, false, false, false] },
+  ]);
+  const [skipListSteps, setSkipListSteps] = useState<InteractiveDSStep[]>([]);
+  const [skipListHistory, setSkipListHistory] = useState<{ nodes: { val: number | 'H'; levels: boolean[] }[]; stepIdx: number; hNodeLevel?: { val: number | 'H'; level: number } }[]>([]);
+  const [currentSkipListStepIdx, setCurrentSkipListStepIdx] = useState<number>(-1);
+  const [skipListInputValue, setSkipListInputValue] = useState<number>(31);
+  const [hNodeLevel, setHNodeLevel] = useState<{ val: number | 'H'; level: number } | undefined>(undefined);
+
+  // --- Bloom Filter State & Engine ---
+  const [bloomBits, setBloomBits] = useState<number[]>(new Array(16).fill(0));
+  const [bloomSteps, setBloomSteps] = useState<InteractiveDSStep[]>([]);
+  const [bloomHistory, setBloomHistory] = useState<{ bits: number[]; stepIdx: number; hBloomIdxs?: number[] }[]>([]);
+  const [currentBloomStepIdx, setCurrentBloomStepIdx] = useState<number>(-1);
+  const [bloomInputValue, setBloomInputValue] = useState<number>(18);
+  const [hBloomIdxs, setHBloomIdxs] = useState<number[]>([]);
 
   // --- Stack State & Engine ---
   const [stackData, setStackData] = useState({
@@ -558,15 +585,21 @@ export default function DataStructuresPlayground() {
     const steps: InteractiveDSStep[] = [];
     const tempHeap = [...heapData];
     const len = tempHeap.length;
-    steps.push({ line: 6, explanation: `[1] 先将数值 ${val} 追加到堆数组末尾槽 heap[${len}] = ${val}。`, highlightedIndices: [len] });
+
+    // Step 0: Initial state (Preparation)
+    steps.push({ line: 5, explanation: `[1] 准备将新数值 ${val} 插入大顶二叉堆。` });
+
+    // Step 1: Append
+    steps.push({ line: 6, explanation: `[2] 首先将新值 ${val} 追加到堆数组末尾槽号 heap[${len}]。`, highlightedIndices: [len] });
     tempHeap.push(val);
+
     let i = len;
     while (i > 0) {
       const parentIdx = Math.floor((i - 1) / 2);
       if (tempHeap[i] > tempHeap[parentIdx]) {
         steps.push({
           line: 9,
-          explanation: `[上滤] 子节点 heap[${i}] (${tempHeap[i]}) > 父节点 heap[${parentIdx}] (${tempHeap[parentIdx]})，不符合大顶堆，对调两侧。`,
+          explanation: `[上滤] 子节点 heap[${i}] (${tempHeap[i]}) > 父节点 heap[${parentIdx}] (${tempHeap[parentIdx]})，不符合大顶堆特性，故对调两侧。`,
           highlightedIndices: [i, parentIdx]
         });
         const t = tempHeap[i];
@@ -574,14 +607,18 @@ export default function DataStructuresPlayground() {
         tempHeap[parentIdx] = t;
         i = parentIdx;
       } else {
-        steps.push({ line: 10, explanation: `[上滤] heap[${i}] <= heap[${parentIdx}]，上层最大均符合。堆调整结束。` });
+        steps.push({
+          line: 10,
+          explanation: `[上滤] 节点 heap[${i}] (${tempHeap[i]}) <= 父节点 heap[${parentIdx}] (${tempHeap[parentIdx]})，满足大顶堆属性，过滤结束。`,
+          highlightedIndices: [i, parentIdx]
+        });
         break;
       }
     }
-    steps.push({ line: -1, explanation: `[完成] 堆上滤调整完毕，堆属性维护正常！` });
+    steps.push({ line: -1, explanation: `[完成] 大顶堆的结构调整以及上滤流程全部大功告成！` });
     setHeapSteps(steps);
     setCurrentHeapStepIdx(0);
-    setHighlightedHeapIdxs([len]);
+    setHighlightedHeapIdxs([]);
   };
 
   const nextHeapStep = () => {
@@ -598,10 +635,10 @@ export default function DataStructuresPlayground() {
     if (activeStep.highlightedIndices) {
       setHighlightedHeapIdxs(activeStep.highlightedIndices);
     }
-    if (activeStep.explanation.includes('追加到堆数组末尾')) {
+    if (activeStep.explanation.includes('追加到堆数组末尾槽号')) {
       const val = heapInputValue;
       setHeapData(prev => [...prev, val]);
-    } else if (activeStep.explanation.includes('不符合大顶堆，对调两侧')) {
+    } else if (activeStep.explanation.includes('不符合大顶堆特性，故对调两侧')) {
       if (activeStep.highlightedIndices && activeStep.highlightedIndices.length === 2) {
         const [a, b] = activeStep.highlightedIndices;
         setHeapData(prev => {
@@ -813,6 +850,358 @@ export default function DataStructuresPlayground() {
     setCurrentGraphStepIdx(-1);
   };
 
+  // -----------------------------------------------------------------
+  // 9. SKIP LIST METHODS
+  // -----------------------------------------------------------------
+  const handleSkipListSearch = () => {
+    const target = skipListInputValue;
+    const steps: InteractiveDSStep[] = [];
+
+    // Begin path search
+    steps.push({
+      line: 7,
+      explanation: `[开始] 在跳表最上层 Level 3 头部节点(H)开始检索目标值 ${target}。`,
+      highlightedNodeLevel: { val: 'H', level: 3 }
+    });
+
+    let currIdx = 0; // Starts at 'H'
+    let currLevel = 3;
+    let found = false;
+
+    while (currLevel >= 0) {
+      const currNode = skipListNodes[currIdx];
+      // Find the next node in the same level
+      let nextIdx = -1;
+      for (let j = currIdx + 1; j < skipListNodes.length; j++) {
+        if (skipListNodes[j].levels[currLevel]) {
+          nextIdx = j;
+          break;
+        }
+      }
+
+      if (nextIdx !== -1) {
+        const nextNode = skipListNodes[nextIdx];
+        const nextVal = nextNode.val as number;
+        if (nextVal < target) {
+          steps.push({
+            line: 10,
+            explanation: `[右跨越] Level ${currLevel}: 下个节点值为 ${nextVal} < ${target}。向右跳转。`,
+            highlightedNodeLevel: { val: nextNode.val, level: currLevel }
+          });
+          currIdx = nextIdx;
+        } else if (nextVal === target) {
+          steps.push({
+            line: 13,
+            explanation: `[命中] Level ${currLevel}: 下个节点正好是目标值 ${target}！正在跨越跳转。`,
+            highlightedNodeLevel: { val: nextNode.val, level: currLevel }
+          });
+          currIdx = nextIdx;
+          found = true;
+          break;
+        } else {
+          // nextVal > target
+          if (currLevel > 0) {
+            steps.push({
+              line: 11,
+              explanation: `[下沉] Level ${currLevel}: 下个节点值为 ${nextVal} > ${target}。无法右进，下沉至 Level ${currLevel - 1}。`,
+              highlightedNodeLevel: { val: currNode.val, level: currLevel - 1 }
+            });
+            currLevel--;
+          } else {
+            steps.push({
+              line: 15,
+              explanation: `[结束] 底层 Level 0 下个节点值为 ${nextVal} > ${target}，无法右进。说明目标 ${target} 绝对不存在。`,
+              highlightedNodeLevel: { val: currNode.val, level: 0 }
+            });
+            break;
+          }
+        }
+      } else {
+        // No next node in this level
+        if (currLevel > 0) {
+          steps.push({
+            line: 11,
+            explanation: `[下沉] Level ${currLevel}: 位列右侧为 NULL 尾哨兵。下沉至 Level ${currLevel - 1}。`,
+            highlightedNodeLevel: { val: currNode.val, level: currLevel - 1 }
+          });
+          currLevel--;
+        } else {
+          steps.push({
+            line: 15,
+            explanation: `[结束] 底层 Level 0 亦无后继且无法下沉。目标值 ${target} 绝对不存在！`,
+            highlightedNodeLevel: { val: currNode.val, level: 0 }
+          });
+          break;
+        }
+      }
+    }
+
+    if (found) {
+      steps.push({
+        line: 14,
+        explanation: `[完成] 成功检索到对应目标节点！返回目标 ${target} 的物理位置。`,
+        highlightedNodeLevel: { val: target, level: currLevel }
+      });
+    }
+
+    setSkipListSteps(steps);
+    setCurrentSkipListStepIdx(0);
+    setHNodeLevel({ val: 'H', level: 3 });
+  };
+
+  const handleSkipListInsert = () => {
+    const val = skipListInputValue;
+    if (val < 1 || val > 99) return;
+    if (skipListNodes.some(n => n.val === val)) {
+      setSkipListSteps([{ line: 0, explanation: `[提示] 数值 ${val} 已在跳表中存在，无需重复插入。` }]);
+      setCurrentSkipListStepIdx(0);
+      return;
+    }
+    if (skipListNodes.length >= 10) {
+      setSkipListSteps([{ line: 0, explanation: `[提示] 空间饱满，跳表节点已达展示上限 10 个。` }]);
+      setCurrentSkipListStepIdx(0);
+      return;
+    }
+
+    const steps: InteractiveDSStep[] = [];
+    steps.push({ line: 7, explanation: `[1] 开始检索插入位置。新值 ${val} 会被追加插入到 sorted 序列中。` });
+
+    // Coin flips to simulate heights
+    const levels = [true, false, false, false];
+    let height = 1;
+    for (let l = 1; l < 4; l++) {
+      if (Math.random() > 0.5) {
+        levels[l] = true;
+        height++;
+      } else {
+        break;
+      }
+    }
+
+    steps.push({ line: 10, explanation: `[2] 抛硬币决定随机索引高度。新节点拥有的连带层高为: ${height} 层。` });
+    steps.push({
+      line: 13,
+      explanation: `[3] 在底层 Level 0 建立排序连接关联。正在将 ${val} 串联到跳表中。`,
+      highlightedNodeLevel: { val: 'H', level: 0 }
+    });
+    steps.push({
+      line: -1,
+      explanation: `[完成] 空降插入 ${val} 正常完毕！1 ~ ${height} 层受影响的前驱/后继指针均已被重新串接。`,
+      highlightedNodeLevel: { val, level: 0 }
+    });
+
+    setSkipListSteps(steps);
+    setCurrentSkipListStepIdx(0);
+    setHNodeLevel({ val, level: 0 });
+  };
+
+  const nextSkipListStep = () => {
+    if (currentSkipListStepIdx < 0 || currentSkipListStepIdx >= skipListSteps.length) return;
+    const nextIdx = currentSkipListStepIdx + 1;
+    if (nextIdx >= skipListSteps.length) {
+      setCurrentSkipListStepIdx(-1);
+      setSkipListSteps([]);
+      setHNodeLevel(undefined);
+      return;
+    }
+
+    setSkipListHistory(prev => [...prev, { nodes: [...skipListNodes], stepIdx: currentSkipListStepIdx, hNodeLevel }]);
+    const activeStep = skipListSteps[nextIdx];
+    if (activeStep.highlightedNodeLevel) {
+      setHNodeLevel(activeStep.highlightedNodeLevel);
+    }
+    if (activeStep.explanation.includes('重新串接')) {
+      const val = skipListInputValue;
+      if (!skipListNodes.some(n => n.val === val)) {
+        const levels = [true, Math.random() > 0.5, false, false];
+        if (levels[1]) levels[2] = Math.random() > 0.5;
+        if (levels[2]) levels[3] = Math.random() > 0.5;
+        const newNodes = [...skipListNodes];
+        let insIdx = newNodes.length;
+        for (let i = 1; i < newNodes.length; i++) {
+          if ((newNodes[i].val as number) > val) {
+            insIdx = i;
+            break;
+          }
+        }
+        newNodes.splice(insIdx, 0, { val, levels });
+        setSkipListNodes(newNodes);
+      }
+    }
+    setCurrentSkipListStepIdx(nextIdx);
+    autoScrollCode(activeStep.line);
+  };
+
+  const prevSkipListStep = () => {
+    if (skipListHistory.length === 0) return;
+    const prev = skipListHistory[skipListHistory.length - 1];
+    setSkipListNodes(prev.nodes);
+    setCurrentSkipListStepIdx(prev.stepIdx);
+    setHNodeLevel(prev.hNodeLevel);
+    setSkipListHistory(history => history.slice(0, history.length - 1));
+    autoScrollCode(skipListSteps[prev.stepIdx].line);
+  };
+
+  const resetSkipListState = () => {
+    setSkipListNodes([
+      { val: 'H', levels: [true, true, true, true] },
+      { val:  8,  levels: [true, true, true, true] },
+      { val: 19,  levels: [true, false, false, false] },
+      { val: 31,  levels: [true, true, false, false] },
+      { val: 43,  levels: [true, false, false, false] },
+      { val: 57,  levels: [true, true, true, false] },
+      { val: 72,  levels: [true, false, false, false] },
+    ]);
+    setSkipListSteps([]);
+    setSkipListHistory([]);
+    setCurrentSkipListStepIdx(-1);
+    setHNodeLevel(undefined);
+  };
+
+  // -----------------------------------------------------------------
+  // 10. BLOOM FILTER METHODS
+  // -----------------------------------------------------------------
+  const handleBloomInsert = () => {
+    const val = bloomInputValue;
+    if (val < 1 || val > 99) return;
+    const steps: InteractiveDSStep[] = [];
+
+    const h1 = (val * 3 + 5) % 16;
+    const h2 = (val * 7 + 2) % 16;
+
+    steps.push({
+      line: 11,
+      explanation: `[1] 开始插入数值 ${val}。布隆过滤器将开始使用哈希算法进行指纹构建。`
+    });
+    steps.push({
+      line: 13,
+      explanation: `[H1] 计算 Hash 1: (${val} * 3 + 5) % 16 = ${h1}。标记槽位 [${h1}] = 1。`,
+      highlightedBloomIdxs: [h1]
+    });
+    steps.push({
+      line: 14,
+      explanation: `[H2] 计算 Hash 2: (${val} * 7 + 2) % 16 = ${h2}。标记槽位 [${h2}] = 1。`,
+      highlightedBloomIdxs: [h1, h2]
+    });
+    steps.push({
+      line: -1,
+      explanation: `[完成] 数值 ${val} 的两个哈希位图槽 [${h1}] 和 [${h2}] 均成功点亮，指纹录入完毕。`,
+      highlightedBloomIdxs: [h1, h2]
+    });
+
+    setBloomSteps(steps);
+    setCurrentBloomStepIdx(0);
+    setHBloomIdxs([]);
+  };
+
+  const handleBloomQuery = () => {
+    const val = bloomInputValue;
+    if (val < 1 || val > 99) return;
+    const steps: InteractiveDSStep[] = [];
+
+    const h1 = (val * 3 + 5) % 16;
+    const h2 = (val * 7 + 2) % 16;
+    const b1 = bloomBits[h1];
+    const b2 = bloomBits[h2];
+
+    steps.push({
+      line: 19,
+      explanation: `[1] 开始查询元素 ${val} 是否在布隆集合中。`
+    });
+    steps.push({
+      line: 21,
+      explanation: `[H1] 校验 Hash 1 位置: (${val} * 3 + 5) % 16 = ${h1}。检验该二进制位为: ${b1}。`,
+      highlightedBloomIdxs: [h1]
+    });
+    steps.push({
+      line: 22,
+      explanation: `[H2] 校验 Hash 2 位置: (${val} * 7 + 2) % 16 = ${h2}。检验该二进制位为: ${b2}。`,
+      highlightedBloomIdxs: [h1, h2]
+    });
+
+    if (b1 === 1 && b2 === 1) {
+      steps.push({
+        line: 23,
+        explanation: `[命中] 两个哈希检测位 [${h1}] 与 [${h2}] 均为 1！结论：元素【可能存在】(Maybe inside, 极低假阳性概率)`,
+        highlightedBloomIdxs: [h1, h2]
+      });
+    } else {
+      steps.push({
+        line: -1,
+        explanation: `[错过] 检测到位 bit[${b1 === 0 ? h1 : h2}] 校验值为 0。结论：该元素【绝对不存在】(100% Not in Set)`,
+        highlightedBloomIdxs: [h1, h2]
+      });
+    }
+
+    setBloomSteps(steps);
+    setCurrentBloomStepIdx(0);
+    setHBloomIdxs([]);
+  };
+
+  const nextBloomStep = () => {
+    if (currentBloomStepIdx < 0 || currentBloomStepIdx >= bloomSteps.length) return;
+    const nextIdx = currentBloomStepIdx + 1;
+    if (nextIdx >= bloomSteps.length) {
+      setCurrentBloomStepIdx(-1);
+      setBloomSteps([]);
+      setHBloomIdxs([]);
+      return;
+    }
+
+    setBloomHistory(prev => [...prev, { bits: [...bloomBits], stepIdx: currentBloomStepIdx, hBloomIdxs }]);
+    const activeStep = bloomSteps[nextIdx];
+    if (activeStep.highlightedBloomIdxs) {
+      setHBloomIdxs(activeStep.highlightedBloomIdxs);
+    }
+    if (activeStep.explanation.includes('槽位 [') && activeStep.explanation.includes('H1')) {
+      const h1 = (bloomInputValue * 3 + 5) % 16;
+      setBloomBits(prev => {
+        const nextBits = [...prev];
+        nextBits[h1] = 1;
+        return nextBits;
+      });
+    } else if (activeStep.explanation.includes('槽位 [') && activeStep.explanation.includes('H2')) {
+      const h1 = (bloomInputValue * 3 + 5) % 16;
+      const h2 = (bloomInputValue * 7 + 2) % 16;
+      setBloomBits(prev => {
+        const nextBits = [...prev];
+        nextBits[h1] = 1;
+        nextBits[h2] = 1;
+        return nextBits;
+      });
+    } else if (activeStep.explanation.includes('指纹录入完毕')) {
+      const h1 = (bloomInputValue * 3 + 5) % 16;
+      const h2 = (bloomInputValue * 7 + 2) % 16;
+      setBloomBits(prev => {
+        const nextBits = [...prev];
+        nextBits[h1] = 1;
+        nextBits[h2] = 1;
+        return nextBits;
+      });
+    }
+
+    setCurrentBloomStepIdx(nextIdx);
+    autoScrollCode(activeStep.line);
+  };
+
+  const prevBloomStep = () => {
+    if (bloomHistory.length === 0) return;
+    const prev = bloomHistory[bloomHistory.length - 1];
+    setBloomBits(prev.bits);
+    setCurrentBloomStepIdx(prev.stepIdx);
+    setHBloomIdxs(prev.hBloomIdxs || []);
+    setBloomHistory(history => history.slice(0, history.length - 1));
+    autoScrollCode(bloomSteps[prev.stepIdx].line);
+  };
+
+  const resetBloomState = () => {
+    setBloomBits(new Array(16).fill(0));
+    setBloomSteps([]);
+    setBloomHistory([]);
+    setCurrentBloomStepIdx(-1);
+    setHBloomIdxs([]);
+  };
+
   // Code definitions for C implementation
   const codes = {
     stack: `#define MAX 6\nint stack[MAX];\nint top = -1;\n\nvoid push(int val) {\n    if (top >= MAX - 1) return;\n    top++;\n    stack[top] = val;\n}\n\nint pop() {\n    if (top < 0) return -1;\n    int val = stack[top];\n    top--;\n    return val;\n}`,
@@ -823,11 +1212,13 @@ export default function DataStructuresPlayground() {
     heap: `#define MAX 7\nint heap[MAX];\nint size = 0;\n\nvoid insert(int val) {\n    if (size >= MAX) return;\n    heap[size] = val;\n    int i = size++;\n    while (i > 0 && heap[i] > heap[(i-1)/2]) {\n        swap(&heap[i], &heap[(i-1)/2]);\n        i = (i-1)/2;\n    }\n}`,
     hash: `struct Node {\n    int key;\n    struct Node* next;\n};\nstruct Node* slots[5] = {NULL};\n\nvoid insert(int key) {\n    int idx = key % 5;\n    struct Node* temp = malloc(sizeof(struct Node));\n    temp->key = key;\n    temp->next = slots[idx];\n    slots[idx] = temp;\n}`,
     graph: `int adj[4][4];\nint visited[4];\n\nvoid bfs(int start) {\n    visited[start] = 1;\n    enqueue(start);\n    while (!isEmpty()) {\n        int u = dequeue();\n        for (int v = 0; v < 4; v++) {\n            if (adj[u][v] && !visited[v]) {\n                visited[v] = 1;\n                enqueue(v);\n            }\n        }\n    }\n}`,
+    skiplist: `struct Node {\n    int val;\n    struct Node* forward[4];\n};\nstruct Node* head = NULL;\n\nstruct Node* search(int target) {\n    struct Node* curr = head;\n    for (int i = 3; i >= 0; i--) {\n        while (curr->forward[i] && curr->forward[i]->val < target)\n            curr = curr->forward[i];\n    }\n    curr = curr->forward[0];\n    if (curr && curr->val == target)\n        return curr;\n    return NULL;\n}`,
+    bloomfilter: `unsigned char filter[2] = {0}; // 16 bits\n\nint hash1(int x) {\n    return (x * 3 + 5) % 16;\n}\nint hash2(int x) {\n    return (x * 7 + 2) % 16;\n}\n\nvoid insert(int val) {\n    int h1 = hash1(val);\n    int h2 = hash2(val);\n    filter[h1 / 8] |= (1 << (h1 % 8));\n    filter[h2 / 8] |= (1 << (h2 % 8));\n}\n\nbool query(int val) {\n    int h1 = hash1(val);\n    int h2 = hash2(val);\n    bool b1 = filter[h1 / 8] & (1 << (h1 % 8));\n    bool b2 = filter[h2 / 8] & (1 << (h2 % 8));\n    return b1 && b2;\n}`,
   };
 
   // Direct active configs according to active tab
-  const steps = activeTab === 'stack' ? stackSteps : activeTab === 'queue' ? queueSteps : activeTab === 'linkedlist' ? llSteps : activeTab === 'array' ? arraySteps : activeTab === 'bst' ? bstSteps : activeTab === 'heap' ? heapSteps : activeTab === 'hash' ? hashSteps : graphSteps;
-  const currIdx = activeTab === 'stack' ? currentStackStepIdx : activeTab === 'queue' ? currentQueueStepIdx : activeTab === 'linkedlist' ? currentLlStepIdx : activeTab === 'array' ? currentArrayStepIdx : activeTab === 'bst' ? currentBstStepIdx : activeTab === 'heap' ? currentHeapStepIdx : activeTab === 'hash' ? currentHashStepIdx : currentGraphStepIdx;
+  const steps = activeTab === 'stack' ? stackSteps : activeTab === 'queue' ? queueSteps : activeTab === 'linkedlist' ? llSteps : activeTab === 'array' ? arraySteps : activeTab === 'bst' ? bstSteps : activeTab === 'heap' ? heapSteps : activeTab === 'hash' ? hashSteps : activeTab === 'graph' ? graphSteps : activeTab === 'skiplist' ? skipListSteps : bloomSteps;
+  const currIdx = activeTab === 'stack' ? currentStackStepIdx : activeTab === 'queue' ? currentQueueStepIdx : activeTab === 'linkedlist' ? currentLlStepIdx : activeTab === 'array' ? currentArrayStepIdx : activeTab === 'bst' ? currentBstStepIdx : activeTab === 'heap' ? currentHeapStepIdx : activeTab === 'hash' ? currentHashStepIdx : activeTab === 'graph' ? currentGraphStepIdx : activeTab === 'skiplist' ? currentSkipListStepIdx : currentBloomStepIdx;
   const currentStep = steps[currIdx];
 
   const handleNextStep = () => {
@@ -839,6 +1230,8 @@ export default function DataStructuresPlayground() {
     else if (activeTab === 'heap') nextHeapStep();
     else if (activeTab === 'hash') nextHashStep();
     else if (activeTab === 'graph') nextGraphStep();
+    else if (activeTab === 'skiplist') nextSkipListStep();
+    else if (activeTab === 'bloomfilter') nextBloomStep();
   };
 
   const handlePrevStep = () => {
@@ -850,18 +1243,22 @@ export default function DataStructuresPlayground() {
     else if (activeTab === 'heap') prevHeapStep();
     else if (activeTab === 'hash') prevHashStep();
     else if (activeTab === 'graph') prevGraphStep();
+    else if (activeTab === 'skiplist') prevSkipListStep();
+    else if (activeTab === 'bloomfilter') prevBloomStep();
   };
 
-  // Tab configurations (Bento Style Layout - 8 items)
+  // Tab configurations (Bento Style Layout - 10 items)
   const TABS = [
     { key: 'stack' as const, name: '1. Stack 顺序栈', details: 'LIFO 先进后出模型' },
     { key: 'queue' as const, name: '2. Queue 顺序队列', details: 'FIFO 极速双指排队' },
-    { key: 'linkedlist' as const, name: '3. Linked单链表', details: 'malloc & free 链式结点' },
+    { key: 'linkedlist' as const, name: '3. Linked 单链表', details: 'malloc & free 链式节点' },
     { key: 'array' as const, name: '4. SeqList 顺序表', details: '物理连续，高成本挪移' },
     { key: 'bst' as const, name: '5. BST 二叉搜索树', details: '两翼分流 遍历分界' },
     { key: 'heap' as const, name: '6. Heap 大顶二叉堆', details: '数组树形完美互映' },
     { key: 'hash' as const, name: '7. Hash 拉链哈希表', details: '分桶散列 解决碰撞冲突' },
     { key: 'graph' as const, name: '8. Graph 图与BFS', details: '4阶无向邻接矩阵' },
+    { key: 'skiplist' as const, name: '9. SkipList 跳表', details: '多层分级 指数级跨越检索' },
+    { key: 'bloomfilter' as const, name: '10. BloomFilter 布隆过滤器', details: '哈希位图 概率过滤高位压缩' },
   ];
 
   return (
@@ -870,13 +1267,13 @@ export default function DataStructuresPlayground() {
         <div>
           <h2 className="font-extrabold text-[22px] font-sans flex items-center gap-2">
             <span>💻 数据结构全景演练场</span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--accent-dim)] border border-[rgba(0,229,255,0.15)] text-[var(--accent)] font-mono uppercase tracking-wider">PANORAMA (8 MODELS)</span>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--accent-dim)] border border-[rgba(0,229,255,0.15)] text-[var(--accent)] font-mono uppercase tracking-wider">PANORAMA (10 MODELS)</span>
           </h2>
-          <p className="text-[13px] text-[var(--text-sec)] font-light mt-1">C 语言原生态指针、堆栈、非线性树、堆、哈希拉链、以及图论与遍历搜索的全景图层化演练。</p>
+          <p className="text-[13px] text-[var(--text-sec)] font-light mt-1">C 语言原生态指针、堆栈、非线性树、堆、哈希拉链、跳表、布隆过滤器以及图论遍历的全景演练。</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4 border-b border-[var(--border)] pb-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-4 border-b border-[var(--border)] pb-4">
         {TABS.map(tab => (
           <button
             key={tab.key}
@@ -1204,6 +1601,78 @@ export default function DataStructuresPlayground() {
               </div>
             )}
 
+            {/* 跳表 SKIP LIST VISUAL */}
+            {activeTab === 'skiplist' && (
+              <div className="flex flex-col gap-3.5 w-full select-none justify-center">
+                <div className="font-mono text-[10px] text-[var(--text-muted)] mb-1 uppercase text-center">4层跳表 (随机高度多级连跳索引)</div>
+                <div className="flex flex-col gap-2.5 bg-black/20 p-3.5 rounded border border-zinc-850">
+                  {[3, 2, 1, 0].map(level => {
+                    const levelNodes = skipListNodes.filter(n => n.levels[level]);
+                    return (
+                      <div key={level} className="flex items-center gap-1.5 text-[10.5px] font-mono">
+                        <div className="w-[30px] font-semibold text-zinc-500 shrink-0 text-right pr-1">L{level}</div>
+                        <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                          {levelNodes.map((node, i) => {
+                            const isHNode = hNodeLevel?.val === node.val && hNodeLevel?.level === level;
+                            return (
+                              <div key={i} className="flex items-center gap-1">
+                                <div
+                                  className={`px-2 py-0.5 rounded border font-bold text-center min-w-[28px] transition-all duration-300 ${isHNode ? 'bg-cyan-500/25 text-cyan-300 border-cyan-450 scale-110 shadow-[0_0_10px_rgba(0,229,255,0.25)] font-extrabold' : 'bg-black/35 text-zinc-300 border-zinc-750 font-normal'}`}
+                                >
+                                  {node.val}
+                                </div>
+                                {i < levelNodes.length - 1 && (
+                                  <div className="text-zinc-650 flex items-center shrink-0">
+                                    <span className="text-[12px] opacity-75">&#10141;</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                          <span className="text-zinc-700 text-[9.5px]">⤏ NULL</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 布隆过滤器 BLOOM FILTER VISUAL */}
+            {activeTab === 'bloomfilter' && (
+              <div className="flex flex-col gap-3.5 w-full select-none justify-center">
+                <div className="font-mono text-[10px] text-[var(--text-muted)] mb-1 uppercase text-center">16-Bit 哈希型二进制位图 (指纹记录器/核验)</div>
+                <div className="grid grid-cols-8 gap-1.5 max-w-[340px] mx-auto bg-black/15 p-3 rounded border border-zinc-800">
+                  {bloomBits.map((bit, idx) => {
+                    const isHigh = hBloomIdxs.includes(idx);
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex flex-col items-center justify-center p-1 rounded border transition-all duration-300 ${isHigh ? 'bg-amber-500/20 border-amber-400 text-amber-300 scale-105 shadow-[0_0_8px_rgba(245,158,11,0.2)]' : bit === 1 ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-400' : 'bg-black/30 border-zinc-850 text-zinc-650'}`}
+                      >
+                        <span className="text-[8px] font-mono text-zinc-500 select-none">#{idx}</span>
+                        <span className="text-xs font-mono font-bold mt-0.5">{bit}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-4 justify-center text-[10px] font-mono text-zinc-400 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded bg-emerald-950/20 border border-emerald-500/40"></div>
+                    <span>已占位 (1)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded bg-black/30 border border-zinc-800"></div>
+                    <span>未初始 (0)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded bg-amber-500/20 border border-amber-400 animate-pulse"></div>
+                    <span>哈希探针</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
 
           {/* Controls & Inputs */}
@@ -1327,6 +1796,34 @@ export default function DataStructuresPlayground() {
                   <button onClick={resetGraphState} className="px-2 py-0.5 bg-zinc-800 text-zinc-305 text-[10.5px] rounded cursor-pointer">重网结构</button>
                 </div>
               )}
+              {activeTab === 'skiplist' && (
+                <div className="flex items-center gap-1.5 flex-wrap text-[11px] mt-1">
+                  <span className="text-[var(--text-sec)]">数值:</span>
+                  <input
+                    type="number"
+                    value={skipListInputValue}
+                    onChange={e => setSkipListInputValue(Math.min(99, Math.max(1, parseInt(e.target.value) || 1)))}
+                    className="w-11 px-1 py-0.5 border border-[var(--border)] rounded bg-black/30 text-center font-mono focus:outline-none"
+                  />
+                  <button onClick={handleSkipListSearch} className="px-2 py-0.5 bg-[var(--accent-dim)] text-[var(--accent)] hover:border-[var(--accent)] border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-mono">search() 检索</button>
+                  <button onClick={handleSkipListInsert} className="px-2 py-0.5 bg-emerald-500/15 text-emerald-400 hover:border-emerald-500 border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-mono">insert() 插入</button>
+                  <button onClick={resetSkipListState} className="px-2 py-0.5 bg-zinc-800 text-zinc-350 text-[10.5px] rounded cursor-pointer">随机重构</button>
+                </div>
+              )}
+              {activeTab === 'bloomfilter' && (
+                <div className="flex items-center gap-1.5 flex-wrap text-[11px] mt-1">
+                  <span className="text-[var(--text-sec)]">指纹值:</span>
+                  <input
+                    type="number"
+                    value={bloomInputValue}
+                    onChange={e => setBloomInputValue(Math.min(99, Math.max(1, parseInt(e.target.value) || 1)))}
+                    className="w-11 px-1 py-0.5 border border-[var(--border)] rounded bg-black/30 text-center font-mono focus:outline-none"
+                  />
+                  <button onClick={handleBloomQuery} className="px-2 py-0.5 bg-[var(--accent-dim)] text-[var(--accent)] hover:border-[var(--accent)] border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-mono">query() 校验</button>
+                  <button onClick={handleBloomInsert} className="px-2 py-0.5 bg-emerald-500/15 text-emerald-400 hover:border-emerald-500 border border-transparent hover:border text-[10.5px] rounded cursor-pointer font-mono font-bold animate-pulse">insert() 注册</button>
+                  <button onClick={resetBloomState} className="px-2 py-0.5 bg-zinc-800 text-zinc-350 text-[10.5px] rounded cursor-pointer">清空位图</button>
+                </div>
+              )}
             </div>
 
             {/* Step execution overlay */}
@@ -1355,13 +1852,42 @@ export default function DataStructuresPlayground() {
         </div>
 
         {/* Code Visual Panel (Split Left) */}
-        <div className="flex flex-col max-h-[440px] shadow-inner" ref={codePanelRef}>
-          <div className="flex-1 overflow-y-auto py-2.5 bg-[var(--bg-code)] font-mono text-[11.5px] leading-[1.75] scrollbar-thin">
-            <div className="px-4 pb-1 border-b border-white/[0.03] text-[9px] uppercase font-mono tracking-wider text-zinc-600 flex justify-between">
-              <span>C 语言原生态指针与堆实现</span>
-              <span>ansi-c</span>
+        <div className="flex flex-col max-h-[440px] shadow-inner bg-zinc-950 border border-zinc-900 rounded overflow-hidden" ref={codePanelRef}>
+          <div className="p-2 border-b border-zinc-900 bg-zinc-950/40 flex justify-between items-center text-[10.5px] px-4 font-mono select-none">
+            <span className="text-zinc-[var(--text-muted)] tracking-wide">💻 CODE PREVIEW</span>
+            <div className="flex items-center gap-2">
+              {(['c', 'python', 'javascript'] as const).map(l => (
+                <button
+                  key={l}
+                  onClick={() => { setLang(l); }}
+                  className={`px-1.5 py-0.5 rounded transition-all text-[9.5px] tracking-wide border uppercase ${lang === l ? 'border-[var(--accent)] bg-[var(--accent-dim)] text-[var(--accent)] font-bold' : 'border-transparent text-zinc-400 hover:text-white'}`}
+                >
+                  {l === 'javascript' ? 'JS' : l}
+                </button>
+              ))}
+              <span className="text-zinc-800">|</span>
+              <button 
+                onClick={() => {
+                  const translated = getTranslatedCode(codes[activeTab], lang);
+                  const blob = new Blob([translated], { type: 'text/plain;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  const extension = lang === 'c' ? 'c' : lang === 'python' ? 'py' : 'js';
+                  link.download = `${activeTab}_structure.${extension}`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }} 
+                className="px-2 py-0.5 border border-zinc-900 rounded bg-black/25 hover:border-[var(--accent)] hover:text-white text-zinc-400 text-[10.5px] transition-all"
+                title="导出独立本端可执行源码"
+              >
+                📥 导出
+              </button>
             </div>
-            {codes[activeTab].split('\n').map((line, i) => {
+          </div>
+          
+          <div className="flex-1 overflow-y-auto py-2.5 bg-[var(--bg-code)] font-mono text-[11.5px] leading-[1.75] scrollbar-thin">
+            {getTranslatedCode(codes[activeTab], lang).split('\n').map((line, i) => {
               const adjustedLineNum = i + 1;
               const isActive = currentStep?.line === adjustedLineNum;
               return (
@@ -1373,15 +1899,15 @@ export default function DataStructuresPlayground() {
                   <span className="line-num w-6 text-right pr-2 text-zinc-600 select-none shrink-0 text-[10px]">
                     {isActive ? '▶' : adjustedLineNum}
                   </span>
-                  <span className="flex-1 whitespace-pre text-[11px] text-zinc-300" dangerouslySetInnerHTML={{ __html: highlightCode(line) }} />
+                  <span className="flex-1 whitespace-pre text-[11px] text-zinc-300" dangerouslySetInnerHTML={{ __html: highlightCode(line, lang) }} />
                 </div>
               );
             })}
           </div>
           <div className="p-2.5 px-3 min-h-[38px] bg-[#0d0d22] border-t border-[var(--border)] text-[11.5px] text-[var(--text-sec)] flex items-start gap-1.5 max-w-full">
-            <span className="inline-flex items-center justify-center w-4 min-w-[16px] h-4 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] font-sans font-bold italic text-[9px]">i</span>
+            <span className="inline-flex items-center justify-center w-4 min-w-[16px] h-4 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] font-sans font-bold italic text-[9px]">{lang === 'javascript' ? 'JS' : lang}</span>
             <span className="flex-1 text-[11.5px] font-sans truncate text-zinc-450">
-              {currentStep ? '物理内存执行线已同步激活' : '操作左侧控制器，开始跟进指针指针和链表演化行为'}
+              {currentStep ? currentStep.explanation : '操作左侧控制器，开始跟进指针和链表演化行为'}
             </span>
           </div>
         </div>

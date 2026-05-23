@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { AlgorithmDef, AlgorithmState } from '@/lib/algo-types';
-import { highlightCode } from '@/lib/syntax';
+import { highlightCode, getTranslatedCode } from '@/lib/syntax';
 
 function genArr(size: number, deterministic = false) {
   if (deterministic) {
@@ -40,6 +40,8 @@ function generateNewState(size: number, isSearch: boolean, algo: AlgorithmDef, d
 export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef, isSearch: boolean, index: number }) {
   const [size, setSize] = useState(10);
   const [sliderVal, setSliderVal] = useState(350);
+  const [lang, setLang] = useState<'c' | 'python' | 'javascript'>('c');
+  const [custStr, setCustStr] = useState('');
   
   const [state, setState] = useState(() => {
     return generateNewState(10, isSearch, algo, true);
@@ -56,6 +58,43 @@ export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef
     setCurIdx(0);
     setPlaying(false);
   }, [algo, isSearch, size]);
+
+  const applyCustomArray = (str: string) => {
+    if (!str.trim()) return;
+    const nums = str.split(/[,，\s]+/).map(x => parseInt(x.trim())).filter(x => !isNaN(x) && x >= 5 && x <= 95);
+    if (nums.length < 3) return;
+    const finalArr = nums.slice(0, 15);
+    if (isSearch) {
+      finalArr.sort((a, b) => a - b);
+    }
+    setPlaying(false);
+    setSize(finalArr.length);
+    let targetVal = state.target;
+    if (isSearch) {
+      if (!targetVal || !finalArr.includes(targetVal)) {
+        targetVal = finalArr[Math.floor(finalArr.length / 2)];
+      }
+    }
+    const s = isSearch ? algo.genSteps([...finalArr], targetVal ?? 0) : algo.genSteps([...finalArr]);
+    setState({
+      arr: finalArr,
+      target: targetVal,
+      steps: s,
+    });
+    setCurIdx(0);
+  };
+
+  const downloadCode = () => {
+    const translated = getTranslatedCode(algo.code, lang);
+    const blob = new Blob([translated], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const extension = lang === 'c' ? 'c' : lang === 'python' ? 'py' : 'js';
+    link.download = `${algo.id}.${extension}`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     // Generate fresh random data on mount to provide high quality interactive arrays
@@ -185,16 +224,16 @@ export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef
             <button className={`w-10 h-8 flex items-center justify-center border rounded-[var(--rs)] bg-[var(--bg-card)] text-[15px] transition-all ${playing ? 'text-[var(--yellow)] border-[rgba(255,202,40,0.3)]' : 'text-[var(--text-sec)] border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]'}`} onClick={() => setPlaying(!playing)} title="播放/暂停">
               {playing ? '⏸' : '▶'}
             </button>
-            <button className="w-8 h-8 flex items-center justify-center border border-[var(--border)] rounded-[var(--rs)] bg-[var(--bg-card)] text-[var(--text-sec)] text-[13px] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-all" onClick={() => { setPlaying(false); setCurIdx(c => Math.min(c + 1, state.steps.length - 1)); }} title="前进 font-mono text-[10.5px] text-[var(--text-muted)]">
+            <button className="w-8 h-8 flex items-center justify-center border border-[var(--border)] rounded-[var(--rs)] bg-[var(--bg-card)] text-[var(--text-sec)] text-[13px] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-dim)] transition-all" onClick={() => { setPlaying(false); setCurIdx(c => Math.min(c + 1, state.steps.length - 1)); }} title="前进">
               ▶
             </button>
-
+ 
             <div className="flex items-center gap-1.5 ml-auto font-mono text-[10.5px] text-[var(--text-muted)]">
               <span>慢</span>
               <input type="range" min="80" max="800" value={sliderVal} onChange={e => setSliderVal(parseInt(e.target.value))} className="w-[70px] accent-[var(--accent)]" />
               <span>快</span>
             </div>
-
+ 
             <div className="flex gap-[3px] ml-1.5">
               {[8, 10, 15, 20].map(s => (
                 <button key={s} onClick={() => handleSizeClick(s)} className={`px-2 py-0.5 font-mono text-[10.5px] border rounded-full transition-all ${size === s ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-dim)]' : 'border-[var(--border)] text-[var(--text-sec)] bg-transparent hover:border-[var(--accent)] hover:text-[var(--accent)]'}`}>
@@ -202,30 +241,70 @@ export default function AlgoCard({ algo, isSearch, index }: { algo: AlgorithmDef
                 </button>
               ))}
             </div>
-
+ 
             {isSearch && (
               <div className="flex items-center gap-1.5 font-mono text-[12px] text-[var(--text-sec)] ml-1.5">
                 <span>目标:</span>
                 <input type="number" value={state.target ?? ''} onChange={handleSetTarget} className="w-[54px] px-1.5 py-0.5 border border-[var(--border)] rounded-[var(--rs)] bg-black/30 text-[var(--text)] text-center focus:outline-none focus:border-[var(--accent)]" />
               </div>
             )}
-          </div>
 
+            {/* Custom array input */}
+            <div className="flex items-center gap-1.5 font-mono text-[11px] text-[var(--text-sec)] ml-1.5 border-l border-zinc-800 dark:border-zinc-800/80 pl-2">
+              <span className="text-zinc-[var(--text-muted)] hover:text-zinc-400 cursor-help" title="输入以逗号分隔的数值序列（如: 12,50,85,34）并按回车">自定数组:</span>
+              <input 
+                type="text"
+                placeholder="如: 40,25,80,31"
+                className="w-[125px] px-2 py-0.5 text-[10.5px] font-mono border border-[var(--border)] rounded bg-black/40 text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-[var(--accent)]"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    applyCustomArray(e.currentTarget.value);
+                  }
+                }}
+                onBlur={(e) => {
+                  applyCustomArray(e.currentTarget.value);
+                }}
+              />
+            </div>
+          </div>
+ 
           <div className="text-[12.5px] text-[var(--text-sec)] min-h-[36px] flex items-center gap-2 flex-wrap mt-1">
             <span className="flex-1 text-[13px]">{st.msg}</span>
             <span className="font-mono text-[11px] text-[var(--text-muted)] whitespace-nowrap">步骤 {curIdx + 1}/{Math.max(1, state.steps.length)}</span>
           </div>
         </div>
-
+ 
         {/* Code Panel */}
         <div className="flex flex-col max-h-[400px] lg:max-h-[500px]" ref={containerRef}>
+          <div className="p-2 border-b border-[var(--border)] bg-zinc-950/40 flex justify-between items-center text-[11px] px-4 font-mono select-none">
+            <span className="text-zinc-[var(--text-muted)] tracking-wide">💻 CODE PREVIEW</span>
+            <div className="flex items-center gap-2">
+              {(['c', 'python', 'javascript'] as const).map(l => (
+                <button
+                  key={l}
+                  onClick={() => { setLang(l); setPlaying(false); }}
+                  className={`px-1.5 py-0.5 rounded transition-all text-[9.5px] tracking-wide border uppercase ${lang === l ? 'border-[var(--accent)] bg-[var(--accent-dim)] text-[var(--accent)] font-bold' : 'border-transparent text-zinc-400 hover:text-white'}`}
+                >
+                  {l === 'javascript' ? 'JS' : l}
+                </button>
+              ))}
+              <span className="text-zinc-800">|</span>
+              <button 
+                onClick={downloadCode} 
+                className="px-2 py-0.5 border border-zinc-900 rounded bg-black/25 hover:border-[var(--accent)] hover:text-white text-zinc-400 text-[10px] transition-all"
+                title="导出独立本端可执行源码"
+              >
+                📥 导出
+              </button>
+            </div>
+          </div>
           <div className="flex-1 overflow-y-auto py-3 bg-[var(--bg-code)] font-mono text-[12px] leading-[1.8] scrollbar-thin scrollbar-thumb-[var(--border)]">
-            {algo.code.split(/\r?\n|\\n/).map((line, i) => (
+            {getTranslatedCode(algo.code, lang).split(/\r?\n/).map((line, i) => (
               <div key={i} data-line={i} className={`code-line flex py-[1px] pr-[14px] cursor-pointer transition-all border-l-[3px] ${st.line === i ? 'active' : 'border-transparent hover:bg-white/5'}`} onClick={() => { setPlaying(false); }}>
                 <span className="line-num w-8 text-right pr-2.5 text-[var(--text-muted)] select-none shrink-0 text-[10.5px] font-mono transition-all">
                   {st.line === i ? '▶' : (i + 1)}
                 </span>
-                <span className="flex-1 whitespace-pre text-[var(--text-sec)]" dangerouslySetInnerHTML={{ __html: highlightCode(line) }} />
+                <span className="flex-1 whitespace-pre text-[var(--text-sec)]" dangerouslySetInnerHTML={{ __html: highlightCode(line, lang) }} />
               </div>
             ))}
           </div>
