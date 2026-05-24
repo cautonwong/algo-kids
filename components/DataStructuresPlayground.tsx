@@ -10,11 +10,138 @@ interface InteractiveDSStep {
   highlightedIndices?: number[];
   highlightedNodeLevel?: { val: number | 'H'; level: number };
   highlightedBloomIdxs?: number[];
+  bstTraversed?: number[];
+  graphVisitedState?: boolean[];
+  graphQueueState?: number[];
+  graphStackState?: number[];
+  graphTraversedState?: number[];
 }
+
+const TREE_ENCYCLOPEDIA = [
+  {
+    id: 'binary_tree',
+    name: '二叉树 (Binary Tree)',
+    definition: '每个节点最多有两个子节点（即度数最大为 2）的非线性层级链式结构。',
+    properties: '包含满二叉树与完全二叉树。第 i 层上至多有 2^(i-1) 个节点，深度为 h 的树至多有 2^h - 1 个节点。',
+    scenes: '经典决策分析、通用层级结构建模、表达式语法分析树、二叉树折半查找寻址。',
+    complexities: { search: 'O(N)', insert: 'O(1)', delete: 'O(N)', space: 'O(N)' },
+    diagram: `        [ Root ]
+       /        \\
+   [ Left ]  [ Right ]
+   /      \\
+[LL]      [LR]`
+  },
+  {
+    id: 'huffman_tree',
+    name: '霍夫曼树 (Huffman Tree / 最优二叉树)',
+    definition: '带权路径长度（WPL）达到最短的二叉搜索变体。将高权重的节点靠近根，低重置深端。',
+    properties: '左右权重堆叠对称，不包含任何度数为 1 的中间节点，完全为叶子存储对应的高效字符集。',
+    scenes: '各种无损数据压缩编码（GZIP, DEFLATE, JPEG）、频度不等的多路分支判断方案优化。',
+    complexities: { search: 'O(d) 深度', insert: 'O(N log N) 构建', delete: 'N/A', space: 'O(N)' },
+    diagram: `          ( Wpl: 35 )
+          /         \\
+     [A: we:15]    ( Wpl: 20 )
+                   /         \\
+              [B: we:8]    [C: we:12]`
+  },
+  {
+    id: 'bst',
+    name: '二叉搜索树 (Binary Search Tree / BST)',
+    definition: '满足左子树所有节点键值均小于其根，而右子树所有键值均大于其根，且左右子树高度自规整的强检索树。',
+    properties: '中序遍历（Left-Root-Right）可以直接产出严格、平滑的单调递增升序排列。高度不均时易退化成链表。',
+    scenes: '内存排序检索、唯一去重过滤、关系映射关联数据底座、用于实现无序关联哈希表。',
+    complexities: { search: 'O(log N) ~ O(N)', insert: 'O(log N) ~ O(N)', delete: 'O(log N) ~ O(N)', space: 'O(N)' },
+    diagram: `          ( Root: 50 )
+         /            \\
+    ( Left: 30 )     ( Right: 70 )
+    /          \\
+(LL: 15)     (LR: 45)`
+  },
+  {
+    id: 'avl_tree',
+    name: 'AVL 树 (Height-Balanced BST)',
+    definition: '一种最早被发明出来的自平衡二叉搜索树。任意节点的左右子树平衡高度差（BF）绝对值不超过 1。',
+    properties: '采用强校验的自旋旋转（Single & Double Rotations: LL, RR, LR, RL）在数据变更后瞬时重平衡高度。',
+    scenes: '高并发且读极其频繁、写入/删除开销可以接受的冷存储寻址元表、快速键值存取结构。',
+    complexities: { search: 'O(log N)', insert: 'O(log N)', delete: 'O(log N)', space: 'O(N)' },
+    diagram: `          ( BF=0  - 50 )
+         /              \\
+    ( BF=1 - 30 )       ( BF=0 - 70 )
+    /
+( BF=0 - 15 )  [经过LL单旋平衡重构]`
+  },
+  {
+    id: 'mst',
+    name: '最小生成树 (Minimum Spanning Tree / MST)',
+    definition: '图论概念。指在加权无向连通图中，以最小的边权总和，把所有关联城市和网点融汇贯穿的树。',
+    properties: '如果包含 V 个节点，则该极小边圈子树有且必只包含 V - 1 条最小权重的相连不构成圈无向边。',
+    scenes: '通信光缆铺设规划、电网输电干线设计、局域路由器组播广播路径计算、超大规模集成电路引脚布线。',
+    complexities: { search: 'N/A', insert: 'O(E log V) (Kruskal)', delete: 'N/A', space: 'O(V + E)' },
+    diagram: `     [ A ] --(2)-- [ B ]
+       \\            /
+       (3)        (1)   <-- 选此权1的边
+         \\        /
+           [ C ]`
+  },
+  {
+    id: 'b_tree',
+    name: 'B- 树 (B-Tree / 多路平衡搜索树)',
+    definition: '多路搜索平衡变体。每一个存储节点（不论是核心根中转或是底层叶）皆可同步塞入实际的键值数据。',
+    properties: '每节点分支（Order）可包含数十至数百，以此极致压缩纵向树高（扁平化结构），极度契合磁盘吞吐。',
+    scenes: '传统非关系型日志索引、物理冷档案检索、磁盘驱动层级目录映射、高阶段落分批读取。',
+    complexities: { search: 'O(log N)', insert: 'O(log N)', delete: 'O(log N)', space: 'O(N)' },
+    diagram: `          [  10 (ptr) 20  ]
+         /        |       \\
+   [3 | 7]     [12 | 15]   [23 | 28]`
+  },
+  {
+    id: 'b_plus_tree',
+    name: 'B+ 树 (B+ Tree)',
+    definition: 'B- 树的高性能升级款。非叶子骨干节点只作为寻路键索引，叶子节点自左向右以双向排序串珠级链表纵连。',
+    properties: '扫区间范围（Range Query）极为迅速，支持顺序及降序的高速全索引遍历。读写极其平稳。',
+    scenes: '各大主流关系型数据库的数据页管理（MySQL InnoDB 索引、Oracle、PostgreSQL）、高性能操作系统内核。',
+    complexities: { search: 'O(log N)', insert: 'O(log N)', delete: 'O(log N)', space: 'O(N)' },
+    diagram: `            [  10  |  20  ] <-- 纯索引层
+           /       |       \\
+     [1..9] --> [10..19] --> [20..Inf] (叶节点相互链接)`
+  },
+  {
+    id: 'trie',
+    name: 'Trie 树 (Prefix Tree / 字典树)',
+    definition: '利用公共前缀进行海量字符串空间极简检索的多向树。从根到叶节点拼缀而成的字符连线，连结单词意图。',
+    properties: '查询开销不依靠总规模，只精确锚定在当前搜索被匹配的前缀长度 L。空间通常是利用冗余换速度。',
+    scenes: '文本拼写智能推荐拼缀、输入法联想辅助（Auto-complete）、IP 网络超大路由黑名单、URL 前缀匹配寻路器。',
+    complexities: { search: 'O(L)', insert: 'O(L)', delete: 'O(L)', space: 'O(L * ListSize)' },
+    diagram: `            ( Root )
+           /        \\
+         [ c ]     [ d ]
+         /           \\
+       [ a ]        [ o ]
+       /              \\
+     [ t ]*           [ g ]* <-- (标识词结尾 "cat", "dog")`
+  },
+  {
+    id: 'binary_trie',
+    name: '二叉 Trie 树 (Binary Trie / 按位字典树)',
+    definition: '无损地将单词/字符甚至是 IP 地址转化为 0 与 1 纯二进制树枝延展开来的高压缩位级检索结构。',
+    properties: '利用高度仅为常数的 0（左转）或 1（右转）来进行二进制路径寻路。大大简化和规范了字符占用。',
+    scenes: '最长前缀匹配（LPM，如 CIDR 网络 IP 路由表寻址）、高吞吐网络硬件转发卡交换芯片、位图状态解析。',
+    complexities: { search: 'O(Bits) 常数', insert: 'O(Bits)', delete: 'O(Bits)', space: 'O(Bits * TotalKeys)' },
+    diagram: `             ( Root )
+            /        \\
+          (0)        (1)
+          /            \\
+        (0.0)         (1.1)
+        /               \\
+     [192.168/16]*    [10.0/8]* <-- (位按 0/1 寻路)`
+  }
+];
 
 export default function DataStructuresPlayground() {
   const [activeTab, setActiveTab] = useState<'stack' | 'queue' | 'linkedlist' | 'array' | 'bst' | 'heap' | 'hash' | 'graph' | 'skiplist' | 'bloomfilter' | 'set' | 'zset' | 'bitmap'>('stack');
-  const [lang, setLang] = useState<'c' | 'python' | 'javascript'>('c');
+  const lang = 'c';
+  const [copied, setCopied] = useState<boolean>(false);
+  const [selectedEncyclopediaId, setSelectedEncyclopediaId] = useState<string>('binary_tree');
 
   // --- Skip List State & Engine ---
   const [skipListNodes, setSkipListNodes] = useState<{ val: number | 'H'; levels: boolean[] }[]>([
@@ -124,10 +251,12 @@ export default function DataStructuresPlayground() {
     4: 15,
   });
   const [bstSteps, setBstSteps] = useState<InteractiveDSStep[]>([]);
-  const [bstHistory, setBstHistory] = useState<{ data: typeof bstData; stepIdx: number; highlightedIdxs?: number[] }[]>([]);
+  const [bstHistory, setBstHistory] = useState<{ data: typeof bstData; stepIdx: number; highlightedIdxs?: number[]; traversed?: number[] }[]>([]);
   const [currentBstStepIdx, setCurrentBstStepIdx] = useState<number>(-1);
   const [bstInputValue, setBstInputValue] = useState<number>(45);
   const [highlightedBstIdxs, setHighlightedBstIdxs] = useState<number[]>([]);
+  const [bstTraversed, setBstTraversed] = useState<number[]>([]);
+  const [bstActiveTraversalType, setBstActiveTraversalType] = useState<'insert' | 'preorder' | 'inorder' | 'postorder' | 'levelorder'>('insert');
 
   // --- Heap State & Engine ---
   const [heapData, setHeapData] = useState<number[]>([90, 70, 80, 40, 30, 60]); // MAX 7
@@ -160,8 +289,11 @@ export default function DataStructuresPlayground() {
   ]);
   const [graphVisited, setGraphVisited] = useState<boolean[]>([false, false, false, false]);
   const [graphQueue, setGraphQueue] = useState<number[]>([]);
+  const [graphStack, setGraphStack] = useState<number[]>([]);
+  const [graphTraversed, setGraphTraversed] = useState<number[]>([]);
+  const [graphSearchMode, setGraphSearchMode] = useState<'bfs' | 'dfs'>('bfs');
   const [graphSteps, setGraphSteps] = useState<InteractiveDSStep[]>([]);
-  const [graphHistory, setGraphHistory] = useState<{ adj: number[][]; visited: boolean[]; queue: number[]; stepIdx: number }[]>([]);
+  const [graphHistory, setGraphHistory] = useState<{ adj: number[][]; visited: boolean[]; queue: number[]; stack: number[]; traversed: number[]; stepIdx: number }[]>([]);
   const [currentGraphStepIdx, setCurrentGraphStepIdx] = useState<number>(-1);
 
   // Refs for scrolling code panels
@@ -523,6 +655,7 @@ export default function DataStructuresPlayground() {
   // 5. BST METHODS
   // -----------------------------------------------------------------
   const handleBSTInsert = () => {
+    setBstActiveTraversalType('insert');
     const val = bstInputValue;
     if (val < 1 || val > 99) return;
     const steps: InteractiveDSStep[] = [];
@@ -558,6 +691,240 @@ export default function DataStructuresPlayground() {
     setBstSteps(steps);
     setCurrentBstStepIdx(0);
     setHighlightedBstIdxs([1]);
+    setBstTraversed([]);
+  };
+
+  const handleBSTPreOrder = () => {
+    setBstActiveTraversalType('preorder');
+    const steps: InteractiveDSStep[] = [];
+    const traversedList: number[] = [];
+
+    steps.push({
+      line: 15,
+      explanation: "开始前序遍历 (Pre-order)。访问顺序：根结点 ➔ 左子树 ➔ 右子树 (DLR)。",
+      highlightedIndices: [],
+      bstTraversed: []
+    });
+
+    const traverse = (idx: number) => {
+      const val = bstData[idx];
+      if (val === undefined || val === null) return;
+
+      // Visit current
+      traversedList.push(val);
+      steps.push({
+        line: 17,
+        explanation: `访问当前根节点 [位置 #${idx}]，将值 ${val} 记下。`,
+        highlightedIndices: [idx],
+        bstTraversed: [...traversedList]
+      });
+
+      // Left
+      const leftIdx = 2 * idx;
+      if (bstData[leftIdx]) {
+        steps.push({
+          line: 18,
+          explanation: `从节点 ${val} 顺边线下探至左子树 [位置 #${leftIdx}]。`,
+          highlightedIndices: [leftIdx],
+          bstTraversed: [...traversedList]
+        });
+        traverse(leftIdx);
+      }
+
+      // Right
+      const rightIdx = 2 * idx + 1;
+      if (bstData[rightIdx]) {
+        steps.push({
+          line: 19,
+          explanation: `返回并沿右侧下向，探入右子树 [位置 #${rightIdx}]。`,
+          highlightedIndices: [rightIdx],
+          bstTraversed: [...traversedList]
+        });
+        traverse(rightIdx);
+      }
+    };
+
+    traverse(1);
+
+    steps.push({
+      line: -1,
+      explanation: `二叉搜索树前序遍历 (DLR) 结束。最终遍历序列: [${traversedList.join(', ')}]`,
+      highlightedIndices: [],
+      bstTraversed: [...traversedList]
+    });
+
+    setBstSteps(steps);
+    setCurrentBstStepIdx(0);
+    setHighlightedBstIdxs([]);
+    setBstTraversed([]);
+  };
+
+  const handleBSTInOrder = () => {
+    setBstActiveTraversalType('inorder');
+    const steps: InteractiveDSStep[] = [];
+    const traversedList: number[] = [];
+
+    steps.push({
+      line: 25,
+      explanation: "中序遍历 (In-order, LDR) 开始。访问顺序：左子树 ➔ 根结点 ➔ 右子树。",
+      highlightedIndices: [],
+      bstTraversed: []
+    });
+
+    const traverse = (idx: number) => {
+      const val = bstData[idx];
+      if (val === undefined || val === null) return;
+
+      const leftIdx = 2 * idx;
+      if (bstData[leftIdx]) {
+        steps.push({
+          line: 27,
+          explanation: `优先在左侧继续深探，走向左子树节点 [位置 #${leftIdx}]。`,
+          highlightedIndices: [leftIdx],
+          bstTraversed: [...traversedList]
+        });
+        traverse(leftIdx);
+      }
+
+      // Visit current
+      traversedList.push(val);
+      steps.push({
+        line: 28,
+        explanation: `左叶段叶树探索完毕，回溯访问根节点 [位置 #${idx}] 并将值 ${val} 置入序列。`,
+        highlightedIndices: [idx],
+        bstTraversed: [...traversedList]
+      });
+
+      const rightIdx = 2 * idx + 1;
+      if (bstData[rightIdx]) {
+        steps.push({
+          line: 29,
+          explanation: `顺着转而搜寻右侧，走下右子树项 [位置 #${rightIdx}]。`,
+          highlightedIndices: [rightIdx],
+          bstTraversed: [...traversedList]
+        });
+        traverse(rightIdx);
+      }
+    };
+
+    traverse(1);
+
+    steps.push({
+      line: -1,
+      explanation: `二叉搜索树中序遍历 (LDR) 完美结束！BST 的中序遍历能直接产出完美的升序排列: [${traversedList.join(', ')}]`,
+      highlightedIndices: [],
+      bstTraversed: [...traversedList]
+    });
+
+    setBstSteps(steps);
+    setCurrentBstStepIdx(0);
+    setHighlightedBstIdxs([]);
+    setBstTraversed([]);
+  };
+
+  const handleBSTPostOrder = () => {
+    setBstActiveTraversalType('postorder');
+    const steps: InteractiveDSStep[] = [];
+    const traversedList: number[] = [];
+
+    steps.push({
+      line: 35,
+      explanation: "后序遍历 (Post-order, LRD) 开始。访问顺序：左子树 ➔ 右子树 ➔ 根结点。",
+      highlightedIndices: [],
+      bstTraversed: []
+    });
+
+    const traverse = (idx: number) => {
+      const val = bstData[idx];
+      if (val === undefined || val === null) return;
+
+      const leftIdx = 2 * idx;
+      if (bstData[leftIdx]) {
+        steps.push({
+          line: 37,
+          explanation: `下行至深处搜寻左侧子树，探向 [位置 #${leftIdx}]。`,
+          highlightedIndices: [leftIdx],
+          bstTraversed: [...traversedList]
+        });
+        traverse(leftIdx);
+      }
+
+      const rightIdx = 2 * idx + 1;
+      if (bstData[rightIdx]) {
+        steps.push({
+          line: 38,
+          explanation: `从深处转移，继续探寻其右侧子树，探向 [位置 #${rightIdx}]。`,
+          highlightedIndices: [rightIdx],
+          bstTraversed: [...traversedList]
+        });
+        traverse(rightIdx);
+      }
+
+      // Visit current
+      traversedList.push(val);
+      steps.push({
+        line: 39,
+        explanation: `双翼叶子（左右子树）均已处理成功，现在安全返回并对根节点 [位置 #${idx}] (值 ${val}) 加以读取。`,
+        highlightedIndices: [idx],
+        bstTraversed: [...traversedList]
+      });
+    };
+
+    traverse(1);
+
+    steps.push({
+      line: -1,
+      explanation: `二叉搜索树后序遍历 (LRD) 结束。最终遍历序列: [${traversedList.join(', ')}]`,
+      highlightedIndices: [],
+      bstTraversed: [...traversedList]
+    });
+
+    setBstSteps(steps);
+    setCurrentBstStepIdx(0);
+    setHighlightedBstIdxs([]);
+    setBstTraversed([]);
+  };
+
+  const handleBSTLevelOrder = () => {
+    setBstActiveTraversalType('levelorder');
+    const steps: InteractiveDSStep[] = [];
+    const traversedList: number[] = [];
+
+    steps.push({
+      line: 45,
+      explanation: "层序遍历 (Level-order / BFS 在树中的体现) 开始。逐行从上至下、每行从左到右访问所有节点。",
+      highlightedIndices: [],
+      bstTraversed: []
+    });
+
+    const queue: number[] = [1];
+    while (queue.length > 0) {
+      const curr = queue.shift()!;
+      const val = bstData[curr];
+      if (val !== undefined && val !== null) {
+        traversedList.push(val);
+        steps.push({
+          line: 48,
+          explanation: `出队列并读取 [位置 #${curr}]，其根值为 ${val}。接着将其直属存在的左右子节点排入待查队列。`,
+          highlightedIndices: [curr],
+          bstTraversed: [...traversedList]
+        });
+        if (bstData[2 * curr]) queue.push(2 * curr);
+        if (bstData[2 * curr + 1]) queue.push(2 * curr + 1);
+      }
+    }
+
+    steps.push({
+      line: -1,
+      explanation: `二叉搜索树层序遍历完成！层序(宽度)优先提取顺序为: [${traversedList.join(', ')}]`,
+      highlightedIndices: [],
+      bstTraversed: [...traversedList]
+    });
+
+    setBstSteps(steps);
+    setCurrentBstStepIdx(0);
+    setHighlightedBstIdxs([]);
+    setBstTraversed([]);
   };
 
   const nextBSTStep = () => {
@@ -567,12 +934,24 @@ export default function DataStructuresPlayground() {
       setCurrentBstStepIdx(-1);
       setBstSteps([]);
       setHighlightedBstIdxs([]);
+      setBstTraversed([]);
       return;
     }
-    setBstHistory(prev => [...prev, { data: { ...bstData }, stepIdx: currentBstStepIdx, highlightedIdxs: [...highlightedBstIdxs] }]);
+    setBstHistory(prev => [
+      ...prev,
+      {
+        data: { ...bstData },
+        stepIdx: currentBstStepIdx,
+        highlightedIdxs: [...highlightedBstIdxs],
+        traversed: [...bstTraversed]
+      }
+    ]);
     const activeStep = bstSteps[nextIdx];
     if (activeStep.highlightedIndices) {
       setHighlightedBstIdxs(activeStep.highlightedIndices);
+    }
+    if (activeStep.bstTraversed) {
+      setBstTraversed(activeStep.bstTraversed);
     }
     if (activeStep.explanation.includes('作为子项插入') && activeStep.highlightedIndices && activeStep.highlightedIndices.length > 0) {
       const val = bstInputValue;
@@ -589,6 +968,7 @@ export default function DataStructuresPlayground() {
     setBstData(prev.data);
     setCurrentBstStepIdx(prev.stepIdx);
     setHighlightedBstIdxs(prev.highlightedIdxs || []);
+    setBstTraversed(prev.traversed || []);
     setBstHistory(history => history.slice(0, history.length - 1));
     autoScrollCode(bstSteps[prev.stepIdx].line);
   };
@@ -599,6 +979,8 @@ export default function DataStructuresPlayground() {
     setBstHistory([]);
     setCurrentBstStepIdx(-1);
     setHighlightedBstIdxs([]);
+    setBstTraversed([]);
+    setBstActiveTraversalType('insert');
   };
 
   // -----------------------------------------------------------------
@@ -767,44 +1149,280 @@ export default function DataStructuresPlayground() {
   };
 
   // -----------------------------------------------------------------
-  // 8. GRAPH BFS METHODS
+  // 8. GRAPH BFS & DFS METHODS
   // -----------------------------------------------------------------
   const handleGraphRunBFS = () => {
+    setGraphSearchMode('bfs');
     const steps: InteractiveDSStep[] = [];
-    const visited = [false, false, false, false];
-    const queue: number[] = [];
 
-    steps.push({ line: 5, explanation: `[1] 开始 A (0) 的 4阶图 BFS 表遍历评估。visited 数组清空。` });
-    visited[0] = true;
-    queue.push(0);
-    steps.push({ line: 6, explanation: `[2] A 点已读，标记 visited[0]=1，且装入 queue [A]。`, highlightedIndices: [0] });
+    steps.push({
+      line: 5,
+      explanation: `[1] 开始 A (0) 的 4阶图 BFS 广度优先遍历。visited 标记清空。`,
+      graphVisitedState: [false, false, false, false],
+      graphQueueState: [],
+      graphStackState: [],
+      graphTraversedState: []
+    });
 
-    while (queue.length > 0) {
-      const u = queue[0];
-      const name = ['A', 'B', 'C', 'D'][u];
-      steps.push({ line: 8, explanation: `[3] 出队头部 ${name} (索引 ${u})。搜查它未访的所有出边邻接节点。`, highlightedIndices: [u] });
-      queue.shift();
+    steps.push({
+      line: 6,
+      explanation: `[2] A 点已读，标记 visited[0]=1，且装入 Queue 队列 [A]。`,
+      highlightedIndices: [0],
+      graphVisitedState: [true, false, false, false],
+      graphQueueState: [0],
+      graphStackState: [],
+      graphTraversedState: []
+    });
 
-      for (let v = 0; v < 4; v++) {
-        if (graphAdj[u][v] === 1) {
-          const adjName = ['A', 'B', 'C', 'D'][v];
-          if (!visited[v]) {
-            visited[v] = true;
-            queue.push(v);
-            steps.push({
-              line: 11,
-              explanation: `邻点 A[${u}][${v}]=1。发现新邻点 ${adjName} 且未访，做 visited 标记、置入对列项。`,
-              highlightedIndices: [u, v]
-            });
-          }
-        }
-      }
-    }
-    steps.push({ line: -1, explanation: `[4] BFS 队列为空，全图关联项搜查告捷！` });
+    steps.push({
+      line: 8,
+      explanation: `[3] 出队 A (索引 0)，记入遍历序列。并开始搜查其可触邻边邻近节点。`,
+      highlightedIndices: [0],
+      graphVisitedState: [true, false, false, false],
+      graphQueueState: [],
+      graphStackState: [],
+      graphTraversedState: [0]
+    });
+
+    steps.push({
+      line: 11,
+      explanation: `邻点 A[0][1]=1 (B)。B 未访，做 visited[1]=1 标记并推入队列。`,
+      highlightedIndices: [0, 1],
+      graphVisitedState: [true, true, false, false],
+      graphQueueState: [1],
+      graphStackState: [],
+      graphTraversedState: [0]
+    });
+
+    steps.push({
+      line: 11,
+      explanation: `邻点 A[0][2]=1 (C)。C 未访，做 visited[2]=1 标记并推入队列。`,
+      highlightedIndices: [0, 2],
+      graphVisitedState: [true, true, true, false],
+      graphQueueState: [1, 2],
+      graphStackState: [],
+      graphTraversedState: [0]
+    });
+
+    steps.push({
+      line: 8,
+      explanation: `出队头部 B (索引 1)，记入遍历序列。寻找 B 点邻面边缘。`,
+      highlightedIndices: [1],
+      graphVisitedState: [true, true, true, false],
+      graphQueueState: [2],
+      graphStackState: [],
+      graphTraversedState: [0, 1]
+    });
+
+    steps.push({
+      line: 11,
+      explanation: `邻点 A[1][3]=1 (D)。D 未访，做 visited[3]=1 标记并入队。`,
+      highlightedIndices: [1, 3],
+      graphVisitedState: [true, true, true, true],
+      graphQueueState: [2, 3],
+      graphStackState: [],
+      graphTraversedState: [0, 1]
+    });
+
+    steps.push({
+      line: 8,
+      explanation: `出队头部 C (索引 2)，加入遍历序列。检查其出边。`,
+      highlightedIndices: [2],
+      graphVisitedState: [true, true, true, true],
+      graphQueueState: [3],
+      graphStackState: [],
+      graphTraversedState: [0, 1, 2]
+    });
+
+    steps.push({
+      line: 9,
+      explanation: `C 的出边邻接节点均已被访问标记。`,
+      highlightedIndices: [2],
+      graphVisitedState: [true, true, true, true],
+      graphQueueState: [3],
+      graphStackState: [],
+      graphTraversedState: [0, 1, 2]
+    });
+
+    steps.push({
+      line: 8,
+      explanation: `出队最后一个元素 D (索引 3)，记入遍历序列。`,
+      highlightedIndices: [3],
+      graphVisitedState: [true, true, true, true],
+      graphQueueState: [],
+      graphStackState: [],
+      graphTraversedState: [0, 1, 2, 3]
+    });
+
+    steps.push({
+      line: 9,
+      explanation: `D 点的邻近节点 B, C 均已被访问标记。`,
+      highlightedIndices: [3],
+      graphVisitedState: [true, true, true, true],
+      graphQueueState: [],
+      graphStackState: [],
+      graphTraversedState: [0, 1, 2, 3]
+    });
+
+    steps.push({
+      line: -1,
+      explanation: `[4] BFS 队列为空，全图关联节点搜查告捷！`,
+      highlightedIndices: [],
+      graphVisitedState: [true, true, true, true],
+      graphQueueState: [],
+      graphStackState: [],
+      graphTraversedState: [0, 1, 2, 3]
+    });
+
     setGraphSteps(steps);
     setCurrentGraphStepIdx(0);
     setGraphVisited([false, false, false, false]);
     setGraphQueue([]);
+    setGraphStack([]);
+    setGraphTraversed([]);
+  };
+
+  const handleGraphRunDFS = () => {
+    setGraphSearchMode('dfs');
+    const steps: InteractiveDSStep[] = [];
+
+    // Step 0: initialization
+    steps.push({
+      line: 5,
+      explanation: `[1] 开始 A (0) 的 4阶图 DFS 深度优先遍历。visited 标记清空。`,
+      graphVisitedState: [false, false, false, false],
+      graphQueueState: [],
+      graphStackState: [],
+      graphTraversedState: []
+    });
+
+    // Step 1: Push A
+    steps.push({
+      line: 6,
+      explanation: `[2] A 点已读，标记 visited[0]=1 并在 Stack 中压入 A。`,
+      highlightedIndices: [0],
+      graphVisitedState: [true, false, false, false],
+      graphQueueState: [],
+      graphStackState: [0],
+      graphTraversedState: []
+    });
+
+    // Step 2: Pop A, add to traversed
+    steps.push({
+      line: 8,
+      explanation: `[3] 出栈栈顶 A (索引 0)，移至遍历序列 A。准备探索其出边邻接节点。`,
+      highlightedIndices: [0],
+      graphVisitedState: [true, false, false, false],
+      graphQueueState: [],
+      graphStackState: [],
+      graphTraversedState: [0]
+    });
+
+    // Neighbors of A (unvisited B and C)
+    steps.push({
+      line: 11,
+      explanation: `邻点 A[0][1]=1 (B)。B 未访，标记 visited[1]=1 且压栈。`,
+      highlightedIndices: [0, 1],
+      graphVisitedState: [true, true, false, false],
+      graphQueueState: [],
+      graphStackState: [1],
+      graphTraversedState: [0]
+    });
+
+    // Push C. Stack: [1, 2]
+    steps.push({
+      line: 11,
+      explanation: `邻点 A[0][2]=1 (C)。C 未访，标记 visited[2]=1 且压栈。`,
+      highlightedIndices: [0, 2],
+      graphVisitedState: [true, true, true, false],
+      graphQueueState: [],
+      graphStackState: [1, 2],
+      graphTraversedState: [0]
+    });
+
+    // Step 4: Pop C
+    steps.push({
+      line: 8,
+      explanation: `出栈栈顶 C (索引 2)，加入遍历序列。检查 C 的所有出边。`,
+      highlightedIndices: [2],
+      graphVisitedState: [true, true, true, false],
+      graphQueueState: [],
+      graphStackState: [1],
+      graphTraversedState: [0, 2]
+    });
+
+    // Neighbors of C: D is unvisited. Push D. Stack: [1, 3]
+    steps.push({
+      line: 11,
+      explanation: `邻点 A[2][3]=1 (D)。D 未访，标记 visited[3]=1 且压栈。`,
+      highlightedIndices: [2, 3],
+      graphVisitedState: [true, true, true, true],
+      graphQueueState: [],
+      graphStackState: [1, 3],
+      graphTraversedState: [0, 2]
+    });
+
+    // Pop D. Stack: [1]
+    steps.push({
+      line: 8,
+      explanation: `出栈栈顶 D (索引 3)，加入遍历序列。检查其周邻出边是否还有未访项。`,
+      highlightedIndices: [3],
+      graphVisitedState: [true, true, true, true],
+      graphQueueState: [],
+      graphStackState: [1],
+      graphTraversedState: [0, 2, 3]
+    });
+
+    // Neighbors of D: B, C already visited
+    steps.push({
+      line: 9,
+      explanation: `D 的邻接角点 B, C 均已被访问过，没有新压入栈节点。`,
+      highlightedIndices: [3],
+      graphVisitedState: [true, true, true, true],
+      graphQueueState: [],
+      graphStackState: [1],
+      graphTraversedState: [0, 2, 3]
+    });
+
+    // Pop B. Stack: []
+    steps.push({
+      line: 8,
+      explanation: `出栈栈顶 B (索引 1)，记入遍历序列。检查其出边。`,
+      highlightedIndices: [1],
+      graphVisitedState: [true, true, true, true],
+      graphQueueState: [],
+      graphStackState: [],
+      graphTraversedState: [0, 2, 3, 1]
+    });
+
+    // Neighbors of B: A, D already visited
+    steps.push({
+      line: 9,
+      explanation: `B 的所有邻接点 A, D 均为已读，无需二次处理。`,
+      highlightedIndices: [1],
+      graphVisitedState: [true, true, true, true],
+      graphQueueState: [],
+      graphStackState: [],
+      graphTraversedState: [0, 2, 3, 1]
+    });
+
+    // Finish
+    steps.push({
+      line: -1,
+      explanation: `[4] DFS 深度栈已空空无也，深度优先拓扑游走圆满完成！`,
+      highlightedIndices: [],
+      graphVisitedState: [true, true, true, true],
+      graphQueueState: [],
+      graphStackState: [],
+      graphTraversedState: [0, 2, 3, 1]
+    });
+
+    setGraphSteps(steps);
+    setCurrentGraphStepIdx(0);
+    setGraphVisited([false, false, false, false]);
+    setGraphQueue([]);
+    setGraphStack([]);
+    setGraphTraversed([]);
   };
 
   const nextGraphStep = () => {
@@ -815,6 +1433,8 @@ export default function DataStructuresPlayground() {
       setGraphSteps([]);
       setGraphVisited([false, false, false, false]);
       setGraphQueue([]);
+      setGraphStack([]);
+      setGraphTraversed([]);
       return;
     }
     setGraphHistory(prev => [
@@ -823,24 +1443,16 @@ export default function DataStructuresPlayground() {
         adj: graphAdj.map(r => [...r]),
         visited: [...graphVisited],
         queue: [...graphQueue],
+        stack: [...graphStack],
+        traversed: [...graphTraversed],
         stepIdx: currentGraphStepIdx
       }
     ]);
     const activeStep = graphSteps[nextIdx];
-    if (activeStep.explanation.includes('装入 queue')) {
-      setGraphVisited([true, false, false, false]);
-      setGraphQueue([0]);
-    } else if (activeStep.explanation.includes('出队头部')) {
-      setGraphQueue(prev => prev.slice(1));
-    } else if (activeStep.explanation.includes('发现新邻点') && activeStep.highlightedIndices && activeStep.highlightedIndices.length === 2) {
-      const v = activeStep.highlightedIndices[1];
-      setGraphVisited(prev => {
-        const nextV = [...prev];
-        nextV[v] = true;
-        return nextV;
-      });
-      setGraphQueue(prev => [...prev, v]);
-    }
+    if (activeStep.graphVisitedState) setGraphVisited(activeStep.graphVisitedState);
+    if (activeStep.graphQueueState) setGraphQueue(activeStep.graphQueueState);
+    if (activeStep.graphStackState) setGraphStack(activeStep.graphStackState);
+    if (activeStep.graphTraversedState) setGraphTraversed(activeStep.graphTraversedState);
     setCurrentGraphStepIdx(nextIdx);
     autoScrollCode(activeStep.line);
   };
@@ -851,6 +1463,8 @@ export default function DataStructuresPlayground() {
     setGraphAdj(prev.adj);
     setGraphVisited(prev.visited);
     setGraphQueue(prev.queue);
+    setGraphStack(prev.stack);
+    setGraphTraversed(prev.traversed);
     setCurrentGraphStepIdx(prev.stepIdx);
     setGraphHistory(history => history.slice(0, history.length - 1));
     autoScrollCode(graphSteps[prev.stepIdx].line);
@@ -875,6 +1489,9 @@ export default function DataStructuresPlayground() {
     ]);
     setGraphVisited([false, false, false, false]);
     setGraphQueue([]);
+    setGraphStack([]);
+    setGraphTraversed([]);
+    setGraphSearchMode('bfs');
     setGraphSteps([]);
     setGraphHistory([]);
     setCurrentGraphStepIdx(-1);
@@ -1598,10 +2215,20 @@ export default function DataStructuresPlayground() {
     queue: `#define MAX 6\nint queue[MAX];\nint front = 0, rear = 0;\n\nvoid enqueue(int val) {\n    if (rear >= MAX) return;\n    queue[rear] = val;\n    rear++;\n}\n\nint dequeue() {\n    if (front == rear) return -1;\n    int val = queue[front];\n    front++;\n    return val;\n}`,
     linkedlist: `struct Node {\n    int data;\n    struct Node* next;\n};\nstruct Node* head = NULL;\n\nvoid insertHead(int val) {\n    struct Node* temp = (struct Node*)malloc(sizeof(struct Node));\n    temp->data = val;\n    temp->next = head;\n    head = temp;\n}\n\nvoid deleteHead() {\n    if (head == NULL) return;\n    struct Node* temp = head;\n    head = head->next;\n    free(temp);\n}`,
     array: `#define MAX 6\nint arr[MAX];\nint size = 0;\n\nvoid insertAt(int idx, int val) {\n    if (size >= MAX || idx < 0 || idx > size) return;\n    for (int i = size - 1; i >= idx; i--) {\n        arr[i + 1] = arr[i];\n    }\n    arr[idx] = val;\n    size++;\n}`,
-    bst: `struct Node {\n    int key;\n    struct Node *left, *right;\n};\n\nstruct Node* insert(struct Node* root, int val) {\n    if (root == NULL) return newNode(val);\n    if (val < root->key)\n        root->left = insert(root->left, val);\n    else if (val > root->key)\n        root->right = insert(root->right, val);\n    return root;\n}`,
+    bst: bstActiveTraversalType === 'preorder'
+      ? `void preorder(struct Node* root) {\n    if (root == NULL) return;\n    printf("%d ", root->key); // 访问根节点\n    preorder(root->left);    // 遍历左侧\n    preorder(root->right);   // 遍历右侧\n}`
+      : bstActiveTraversalType === 'inorder'
+      ? `void inorder(struct Node* root) {\n    if (root == NULL) return;\n    inorder(root->left);     // 偏向左侧\n    printf("%d ", root->key); // 访问中根\n    inorder(root->right);    // 下探右侧\n}`
+      : bstActiveTraversalType === 'postorder'
+      ? `void postorder(struct Node* root) {\n    if (root == NULL) return;\n    postorder(root->left);    // 深走左树\n    postorder(root->right);   // 深走右树\n    printf("%d ", root->key); // 最终访问\n}`
+      : bstActiveTraversalType === 'levelorder'
+      ? `void levelorder(struct Node* root) {\n    if (root == NULL) return;\n    enqueue(root);\n    while (!isEmpty()) {\n        struct Node* temp = dequeue();\n        printf("%d ", temp->key);\n        if (temp->left) enqueue(temp->left);\n        if (temp->right) enqueue(temp->right);\n    }\n}`
+      : `struct Node {\n    int key;\n    struct Node *left, *right;\n};\n\nstruct Node* insert(struct Node* root, int val) {\n    if (root == NULL) return newNode(val);\n    if (val < root->key)\n        root->left = insert(root->left, val);\n    else if (val > root->key)\n        root->right = insert(root->right, val);\n    return root;\n}`,
     heap: `#define MAX 7\nint heap[MAX];\nint size = 0;\n\nvoid insert(int val) {\n    if (size >= MAX) return;\n    heap[size] = val;\n    int i = size++;\n    while (i > 0 && heap[i] > heap[(i-1)/2]) {\n        swap(&heap[i], &heap[(i-1)/2]);\n        i = (i-1)/2;\n    }\n}`,
     hash: `struct Node {\n    int key;\n    struct Node* next;\n};\nstruct Node* slots[5] = {NULL};\n\nvoid insert(int key) {\n    int idx = key % 5;\n    struct Node* temp = malloc(sizeof(struct Node));\n    temp->key = key;\n    temp->next = slots[idx];\n    slots[idx] = temp;\n}`,
-    graph: `int adj[4][4];\nint visited[4];\n\nvoid bfs(int start) {\n    visited[start] = 1;\n    enqueue(start);\n    while (!isEmpty()) {\n        int u = dequeue();\n        for (int v = 0; v < 4; v++) {\n            if (adj[u][v] && !visited[v]) {\n                visited[v] = 1;\n                enqueue(v);\n            }\n        }\n    }\n}`,
+    graph: graphSearchMode === 'dfs'
+      ? `int adj[4][4];\nint visited[4];\n\nvoid dfs(int start) {\n    visited[start] = 1;\n    push(start);\n    while (!isEmpty()) {\n        int u = pop();\n        for (int v = 0; v < 4; v++) {\n            if (adj[u][v] && !visited[v]) {\n                visited[v] = 1;\n                push(v);\n            }\n        }\n    }\n}`
+      : `int adj[4][4];\nint visited[4];\n\nvoid bfs(int start) {\n    visited[start] = 1;\n    enqueue(start);\n    while (!isEmpty()) {\n        int u = dequeue();\n        for (int v = 0; v < 4; v++) {\n            if (adj[u][v] && !visited[v]) {\n                visited[v] = 1;\n                enqueue(v);\n            }\n        }\n    }\n}`,
     skiplist: `struct Node {\n    int val;\n    struct Node* forward[4];\n};\nstruct Node* head = NULL;\n\nstruct Node* search(int target) {\n    struct Node* curr = head;\n    for (int i = 3; i >= 0; i--) {\n        while (curr->forward[i] && curr->forward[i]->val < target)\n            curr = curr->forward[i];\n    }\n    curr = curr->forward[0];\n    if (curr && curr->val == target)\n        return curr;\n    return NULL;\n}`,
     bloomfilter: `unsigned char filter[2] = {0}; // 16 bits\n\nint hash1(int x) {\n    return (x * 3 + 5) % 16;\n}\nint hash2(int x) {\n    return (x * 7 + 2) % 16;\n}\n\nvoid insert(int val) {\n    int h1 = hash1(val);\n    int h2 = hash2(val);\n    filter[h1 / 8] |= (1 << (h1 % 8));\n    filter[h2 / 8] |= (1 << (h2 % 8));\n}\n\nbool query(int val) {\n    int h1 = hash1(val);\n    int h2 = hash2(val);\n    bool b1 = filter[h1 / 8] & (1 << (h1 % 8));\n    bool b2 = filter[h2 / 8] & (1 << (h2 % 8));\n    return b1 && b2;\n}`,
     set: `struct Set {\n    int items[15];\n    int size;\n};\n\nbool contains(struct Set* s, int val) {\n    for (int i = 0; i < s->size; i++) {\n        if (s->items[i] == val) return true;\n    }\n    return false;\n}\n\nvoid insert(struct Set* s, int val) {\n    if (!contains(s, val)) {\n        s->items[s->size++] = val;\n    }\n}`,
@@ -1860,6 +2487,14 @@ export default function DataStructuresPlayground() {
                     );
                   })}
                 </div>
+                {bstActiveTraversalType !== 'insert' && bstTraversed.length > 0 && (
+                  <div className="mt-2 text-[10.5px] font-mono text-center flex items-center justify-center gap-1.5 bg-black/40 px-3 py-1 rounded border border-zinc-800/80 max-w-full overflow-x-auto w-full">
+                    <span className="text-zinc-500 font-bold shrink-0">当前已访问:</span>
+                    <div className="flex items-center gap-1 text-emerald-300 font-bold">
+                      {bstTraversed.join(' ➔ ')}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1993,9 +2628,19 @@ export default function DataStructuresPlayground() {
                         ))
                       )}
                     </div>
-                    {graphQueue.length > 0 && (
+                    {graphSearchMode === 'bfs' && graphQueue.length > 0 && (
                       <div className="text-[10px] font-mono text-purple-400 mt-2">
                         BFS 队: [{graphQueue.map(idx => ['A', 'B', 'C', 'D'][idx]).join(', ')}]
+                      </div>
+                    )}
+                    {graphSearchMode === 'dfs' && graphStack.length > 0 && (
+                      <div className="text-[10px] font-mono text-pink-400 mt-2">
+                        DFS 栈: [{graphStack.map(idx => ['A', 'B', 'C', 'D'][idx]).join(', ')}]
+                      </div>
+                    )}
+                    {graphTraversed.length > 0 && (
+                      <div className="text-[10px] font-mono text-cyan-400 mt-2 bg-black/30 p-1 rounded border border-zinc-850">
+                        <span className="text-zinc-500 font-bold">遍历:</span> {graphTraversed.map(idx => ['A', 'B', 'C', 'D'][idx]).join('➔')}
                       </div>
                     )}
                   </div>
@@ -2329,16 +2974,25 @@ export default function DataStructuresPlayground() {
                 </div>
               )}
               {activeTab === 'bst' && (
-                <div className="flex items-center gap-1.5 flex-wrap text-[11px] mt-1">
-                  <span className="text-[var(--text-sec)]">树元插入:</span>
-                  <input
-                    type="number"
-                    value={bstInputValue}
-                    onChange={e => setBstInputValue(Math.min(99, Math.max(1, parseInt(e.target.value) || 1)))}
-                    className="w-11 px-1 py-0.5 border border-[var(--border)] rounded bg-black/30 text-center font-mono focus:outline-none"
-                  />
-                  <button onClick={handleBSTInsert} className="px-2 py-0.5 bg-[var(--accent-dim)] text-[var(--accent)] hover:border-[var(--accent)] border border-transparent hover:border text-[10.5px] rounded cursor-pointer">insertBST</button>
-                  <button onClick={resetBstState} className="px-2 py-0.5 bg-zinc-800 text-zinc-300 text-[10.5px] rounded cursor-pointer">重置二叉树</button>
+                <div className="flex flex-col gap-2 mt-1">
+                  <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
+                    <span className="text-[var(--text-sec)]">BST节点插入:</span>
+                    <input
+                      type="number"
+                      value={bstInputValue}
+                      onChange={e => setBstInputValue(Math.min(99, Math.max(1, parseInt(e.target.value) || 1)))}
+                      className="w-11 px-1 py-0.5 border border-[var(--border)] rounded bg-black/30 text-center font-mono focus:outline-none"
+                    />
+                    <button onClick={handleBSTInsert} className="px-2 py-0.5 bg-[var(--accent-dim)] text-[var(--accent)] hover:border-[var(--accent)] border border-transparent hover:border text-[10.5px] rounded cursor-pointer">insertBST</button>
+                    <button onClick={resetBstState} className="px-2 py-0.5 bg-zinc-850 text-zinc-300 text-[10.5px] rounded cursor-pointer">重置二叉树</button>
+                  </div>
+                  <div className="flex items-center gap-1 flex-wrap text-[10.5px] border-t border-zinc-800/40 pt-1.5 mt-0.5">
+                    <span className="text-zinc-500 font-mono text-[10px] mr-1 uppercase">执行树遍历:</span>
+                    <button onClick={handleBSTPreOrder} className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 font-medium hover:bg-amber-500/20 text-[10px] rounded cursor-pointer">前序 (DLR)</button>
+                    <button onClick={handleBSTInOrder} className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-medium hover:bg-emerald-500/20 text-[10px] rounded cursor-pointer">中序 (LDR)</button>
+                    <button onClick={handleBSTPostOrder} className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-300 font-medium hover:bg-blue-500/20 text-[10px] rounded cursor-pointer">后序 (LRD)</button>
+                    <button onClick={handleBSTLevelOrder} className="px-2 py-0.5 bg-purple-500/10 border border-purple-500/30 text-purple-300 font-medium hover:bg-purple-500/20 text-[10px] rounded cursor-pointer">层序 (BFS)</button>
+                  </div>
                 </div>
               )}
               {activeTab === 'heap' && (
@@ -2369,9 +3023,10 @@ export default function DataStructuresPlayground() {
               )}
               {activeTab === 'graph' && (
                 <div className="flex items-center gap-1.5 flex-wrap text-[11px] mt-1">
-                  <span className="text-[var(--text-sec)] font-mono text-[11px]">图搜索 A 开始:</span>
-                  <button onClick={handleGraphRunBFS} className="px-2.5 py-0.5 bg-purple-900 border border-purple-600 text-purple-100 font-bold text-[10.5px] rounded-[var(--rs)] hover:bg-purple-800 cursor-pointer">bfs(0) 图广遍历</button>
-                  <button onClick={resetGraphState} className="px-2 py-0.5 bg-zinc-800 text-zinc-305 text-[10.5px] rounded cursor-pointer">重网结构</button>
+                  <span className="text-[var(--text-sec)] font-mono text-[10px] uppercase mr-0.5 text-zinc-500">图遍历 A (0) 开始:</span>
+                  <button onClick={handleGraphRunBFS} className="px-2.5 py-0.5 bg-purple-950/40 border border-purple-500/50 text-purple-300 font-bold text-[10.5px] rounded-[var(--rs)] hover:bg-purple-900/40 hover:border-purple-400 cursor-pointer">BFS(0) 广度优先</button>
+                  <button onClick={handleGraphRunDFS} className="px-2.5 py-0.5 bg-pink-950/40 border border-pink-500/50 text-pink-300 font-bold text-[10.5px] rounded-[var(--rs)] hover:bg-pink-900/40 hover:border-pink-400 cursor-pointer">DFS(0) 深度优先</button>
+                  <button onClick={resetGraphState} className="px-2 py-0.5 bg-zinc-800 text-zinc-350 text-[10.5px] rounded hover:bg-zinc-700 cursor-pointer ml-1">重置图结构</button>
                 </div>
               )}
               {activeTab === 'skiplist' && (
@@ -2485,34 +3140,26 @@ export default function DataStructuresPlayground() {
         {/* Code Visual Panel (Split Left) */}
         <div className="flex flex-col max-h-[440px] shadow-inner bg-zinc-950 border border-zinc-900 rounded overflow-hidden" ref={codePanelRef}>
           <div className="p-2 border-b border-zinc-900 bg-zinc-950/40 flex justify-between items-center text-[10.5px] px-4 font-mono select-none">
-            <span className="text-zinc-[var(--text-muted)] tracking-wide">💻 CODE PREVIEW</span>
+            <span className="text-zinc-[var(--text-muted)] tracking-wide">💻 CODE PREVIEW (C-LANGUAGE)</span>
             <div className="flex items-center gap-2">
-              {(['c', 'python', 'javascript'] as const).map(l => (
-                <button
-                  key={l}
-                  onClick={() => { setLang(l); }}
-                  className={`px-1.5 py-0.5 rounded transition-all text-[9.5px] tracking-wide border uppercase ${lang === l ? 'border-[var(--accent)] bg-[var(--accent-dim)] text-[var(--accent)] font-bold' : 'border-transparent text-zinc-400 hover:text-white'}`}
-                >
-                  {l === 'javascript' ? 'JS' : l}
-                </button>
-              ))}
-              <span className="text-zinc-800">|</span>
               <button 
-                onClick={() => {
-                  const translated = getTranslatedCode(codes[activeTab], lang);
-                  const blob = new Blob([translated], { type: 'text/plain;charset=utf-8' });
-                  const url = URL.createObjectURL(blob);
-                  const link = document.createElement('a');
-                  link.href = url;
-                  const extension = lang === 'c' ? 'c' : lang === 'python' ? 'py' : 'js';
-                  link.download = `${activeTab}_structure.${extension}`;
-                  link.click();
-                  URL.revokeObjectURL(url);
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(codes[activeTab]);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  } catch (err) {
+                    console.error('Failed to copy code: ', err);
+                  }
                 }} 
-                className="px-2 py-0.5 border border-zinc-900 rounded bg-black/25 hover:border-[var(--accent)] hover:text-white text-zinc-400 text-[10.5px] transition-all"
-                title="导出独立本端可执行源码"
+                className={`px-3 py-0.5 border rounded font-sans font-medium text-[11px] transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] ${
+                  copied 
+                    ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300' 
+                    : 'border-zinc-800 bg-black/25 hover:border-[var(--accent)] hover:text-white text-zinc-400'
+                }`}
+                title="复制当前数据结构的完整C语言源代码"
               >
-                📥 导出
+                {copied ? '✓ 已复制!' : '📋 复制源码'}
               </button>
             </div>
           </div>
@@ -2536,7 +3183,7 @@ export default function DataStructuresPlayground() {
             })}
           </div>
           <div className="p-2.5 px-3 min-h-[38px] bg-[#0d0d22] border-t border-[var(--border)] text-[11.5px] text-[var(--text-sec)] flex items-start gap-1.5 max-w-full">
-            <span className="inline-flex items-center justify-center w-4 min-w-[16px] h-4 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] font-sans font-bold italic text-[9px]">{lang === 'javascript' ? 'JS' : lang}</span>
+            <span className="inline-flex items-center justify-center w-4 min-w-[16px] h-4 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] font-sans font-bold italic text-[9px]">C</span>
             <span className="flex-1 text-[11.5px] font-sans truncate text-zinc-450">
               {currentStep ? currentStep.explanation : '操作左侧控制器，开始跟进指针和链表演化行为'}
             </span>
@@ -2544,6 +3191,102 @@ export default function DataStructuresPlayground() {
         </div>
 
       </div>
+
+      {/* 🌳 经典平衡树与多路搜寻结构知识检索树型大辞典 */}
+      <div className="mt-8 pt-6 border-t border-zinc-900">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[17px]">🌳</span>
+          <h3 className="text-[15px] font-extrabold tracking-tight text-white flex items-center gap-2">
+            <span>经典树型与图论高级结构大辞典</span>
+            <span className="text-[9.5px] font-mono font-normal px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">9 CORE TREES INDEX</span>
+          </h3>
+        </div>
+        
+        <p className="text-[12.5px] text-zinc-450 font-light max-w-3xl mb-5 leading-relaxed">
+          点击检索下方典型的树型、森林与图论拓扑模型。包含：二叉树、最优霍夫曼树、二叉搜索树、自平衡 AVL 树、最小生成树以及高并发常用的 B-树、B+树与高性能分词 Trie 树、二叉位 Trie 树的深度对比。
+        </p>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mt-4">
+          {/* Sub tabs list: Col-span-4 */}
+          <div className="lg:col-span-4 flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible pb-2.5 lg:pb-0 scrollbar-thin">
+            {TREE_ENCYCLOPEDIA.map(item => {
+              const isSelected = selectedEncyclopediaId === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setSelectedEncyclopediaId(item.id)}
+                  className={`text-left px-3.5 py-2.5 rounded-[var(--rs)] border text-[12px] transition-all flex flex-col gap-0.5 shrink-0 lg:shrink-1 cursor-pointer ${
+                    isSelected 
+                      ? 'bg-[var(--accent-dim)] border-[rgba(0,229,255,0.3)] text-white font-bold shadow-sm' 
+                      : 'bg-black/15 border-transparent hover:bg-white/5 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <span className="font-sans tracking-wide">{item.name}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Profile detailed card: Col-span-8 */}
+          {(() => {
+            const currentItem = TREE_ENCYCLOPEDIA.find(e => e.id === selectedEncyclopediaId) || TREE_ENCYCLOPEDIA[0];
+            return (
+              <div className="lg:col-span-8 bg-black/25 border border-zinc-900 rounded-[var(--rs)] p-5 flex flex-col md:flex-row gap-5">
+                <div className="flex-1 flex flex-col gap-3.5">
+                  <div>
+                    <span className="text-[10px] uppercase font-mono tracking-widest text-[var(--accent)] font-bold">基本概念 & 定义</span>
+                    <h4 className="text-[14px] font-extrabold text-white mt-0.5">{currentItem.name}</h4>
+                    <p className="text-[12.5px] text-zinc-300 mt-1.5 leading-relaxed font-light">{currentItem.definition}</p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] uppercase font-mono tracking-widest text-emerald-400 font-bold">物理特征 / 关键判定性质</span>
+                    <p className="text-[12px] text-zinc-400 mt-1 leading-relaxed font-light">{currentItem.properties}</p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] uppercase font-mono tracking-widest text-pink-400 font-bold">经典实际工业应用场景</span>
+                    <p className="text-[12.5px] text-zinc-300 mt-1 font-sans italic font-light">{currentItem.scenes}</p>
+                  </div>
+
+                  {/* Complexities table summary */}
+                  <div className="mt-2.5 pt-3 border-t border-zinc-900/40">
+                    <span className="text-[10px] uppercase font-mono tracking-widest text-orange-400 font-bold">核心时间与空间复杂度评估</span>
+                    <div className="grid grid-cols-4 gap-2 mt-2 font-mono text-center">
+                      <div className="p-1 px-1.5 bg-zinc-950/40 border border-zinc-900 rounded">
+                        <div className="text-[9px] text-zinc-500 uppercase">查找 (Search)</div>
+                        <div className="text-[12px] mt-0.5 text-orange-300 font-bold">{currentItem.complexities.search}</div>
+                      </div>
+                      <div className="p-1 px-1.5 bg-zinc-950/40 border border-zinc-900 rounded">
+                        <div className="text-[9px] text-zinc-500 uppercase">插入 (Insert)</div>
+                        <div className="text-[12px] mt-0.5 text-emerald-300 font-bold">{currentItem.complexities.insert}</div>
+                      </div>
+                      <div className="p-1 px-1.5 bg-zinc-950/40 border border-zinc-900 rounded">
+                        <div className="text-[9px] text-zinc-500 uppercase">删除 (Delete)</div>
+                        <div className="text-[12px] mt-0.5 text-pink-300 font-bold">{currentItem.complexities.delete}</div>
+                      </div>
+                      <div className="p-1 px-1.5 bg-zinc-950/40 border border-zinc-900 rounded">
+                        <div className="text-[9px] text-zinc-500 uppercase">空间 (Space)</div>
+                        <div className="text-[12px] mt-0.5 text-blue-300 font-bold">{currentItem.complexities.space}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ASCII Diagram section */}
+                <div className="w-full md:w-[200px] bg-[#070712] border border-zinc-900 rounded p-4 font-mono text-[10.5px] text-cyan-300 flex flex-col justify-between shrink-0 select-none overflow-x-auto">
+                  <span className="text-[9px] text-zinc-500 font-bold tracking-wider uppercase mb-2 block select-none">🌐 抽象拓扑网络示意图</span>
+                  <pre className="leading-[1.4] whitespace-pre text-left font-semibold py-4 select-none">
+                    {currentItem.diagram}
+                  </pre>
+                  <span className="text-[9px] text-zinc-650 tracking-tight text-center mt-3 select-none">Visual Reference Model</span>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
     </div>
   );
 }
